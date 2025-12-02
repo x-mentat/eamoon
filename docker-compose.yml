@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.web
     command: python app.py
     ports:
       - "8000:8000"
@@ -14,7 +16,9 @@ services:
       - poller
 
   poller:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.poller
     command: python modbus_service.py
     env_file:
       - .env
@@ -22,7 +26,9 @@ services:
       - .:/app
 
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
     command: python telegram_bot.py
     env_file:
       - .env
