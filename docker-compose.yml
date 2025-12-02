@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    command: python app.py
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - poller
+
+  poller:
+    build: .
+    command: python modbus_service.py
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  bot:
+    build: .
+    command: python telegram_bot.py
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # Uncomment to disable bot if you don't set TELEGRAM_BOT_TOKEN/CHAT_ID
+    # deploy:
+    #   replicas: 0
