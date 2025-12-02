@@ -32,6 +32,13 @@ Telegram alerts (/start, /status, outage/restore):
 python telegram_bot.py
 ```
 
+### Virtualenv (optional)
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
 ## Notes
 - Data is cached in `DB_PATH` (default `inverter.db`); the UI does not hit the inverter.
 - Register map/model selection lives in `easunpy/models.py` (`ISOLAR_SMG_II_4K` etc.).
