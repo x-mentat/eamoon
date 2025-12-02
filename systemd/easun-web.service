@@ -1,0 +1,14 @@
+[Unit]
+Description=Easun Flask UI
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/eamoon
+EnvironmentFile=/opt/eamoon/.env
+ExecStart=/usr/bin/python /opt/eamoon/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Easun Modbus Poller
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/eamoon
+EnvironmentFile=/opt/eamoon/.env
+ExecStart=/usr/bin/python /opt/eamoon/modbus_service.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
