@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Easun Inverter Status</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --bg: #0e1a32;
+      --card: #131f3a;
+      --panel: #182649;
+      --border: #24355c;
+      --accent: #7cd14f;
+      --muted: #c6d2f2;
+      --text: #f6f8ff;
+      --warn: #ffcec2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1c2d56, #0e1a32 45%), #0e1a32;
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 28px 16px 40px;
+    }
+    .card {
+      width: min(1024px, 100%);
+      background: var(--card);
+      padding: 20px 22px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 18px 38px rgba(0,0,0,0.4);
+    }
+    h1 { margin: 0 0 6px; font-weight: 700; letter-spacing: 0.01em; color: #ffffff; }
+    .meta {
+      color: var(--muted);
+      margin: 0 0 14px;
+      font-size: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: center;
+    }
+    .pill {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+      color: var(--text);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pill .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+      display: inline-block;
+    }
+    .dash {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      align-items: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .item {
+      background: var(--panel);
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .value { font-size: 20px; font-weight: 700; color: #ffffff; }
+    .status {
+      margin-top: 14px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: rgba(124, 209, 79, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .status.error {
+      background: rgba(255, 80, 80, 0.12);
+      color: var(--warn);
+    }
+    .flow {
+      margin-top: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .flow text { fill: #ffffff; font-family: "Segoe UI", sans-serif; }
+    .flow .label { font-size: 12px; fill: #ffffff; }
+    .flow .value { font-size: 14px; font-weight: 700; fill: #ffffff; }
+    .node {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      column-gap: 12px;
+      align-items: center;
+    }
+    .circle {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: var(--text);
+      position: relative;
+    }
+    .circle::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      border: 1px dashed var(--accent);
+      opacity: 0.7;
+    }
+    .node h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .node .value { font-size: 18px; font-weight: 700; }
+    .node .sub { font-size: 13px; color: var(--muted); }
+    .center {
+      text-align: center;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(111, 187, 76, 0.1);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .grid-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, var(--accent) 60%, transparent 100%);
+      opacity: 0.6;
+      margin: 4px 0;
+    }
+    .actions { margin-top: 12px; }
+    .actions a { color: var(--accent); text-decoration: none; font-weight: 600; margin-right: 10px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h1>Easun Inverter</h1>
+    <div class="meta">
+      <span class="pill"><span class="dot"></span>Inverter {{ host }}</span>
+      {% if local_ip %}<span class="pill">Local {{ local_ip }}</span>{% endif %}
+      <span class="pill">Model {{ model }}</span>
+      {% if updated_at %}<span class="pill">Updated {{ updated_at }}</span>{% endif %}
+    </div>
+
+    {% if error %}
+      <div class="status error">Connection error: {{ error }}</div>
+    {% else %}
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start;">
+        <div>
+          <div class="grid" style="grid-template-columns: 1fr;">
+            <div class="item"><div class="label">Grid V</div><div class="value">{{ data.grid_voltage }} V</div></div>
+            <div class="item"><div class="label">Grid Power</div><div class="value">{{ data.grid_power }} W</div></div>
+            <div class="item"><div class="label">AC Out V</div><div class="value">{{ data.ac_output_voltage }} V</div></div>
+            <div class="item"><div class="label">AC Out Hz</div><div class="value">{{ data.ac_output_freq }} Hz</div></div>
+            <div class="item"><div class="label">AC Power</div><div class="value">{{ data.ac_output_power }} W</div></div>
+            <div class="item"><div class="label">AC Current</div><div class="value">{{ data.ac_output_current }} A</div></div>
+            <div class="item"><div class="label">Battery V</div><div class="value">{{ data.battery_voltage }} V</div></div>
+            <div class="item"><div class="label">Battery A</div><div class="value">{{ data.battery_current }} A</div></div>
+            <div class="item"><div class="label">Battery SOC</div><div class="value">{{ data.battery_soc }} %</div></div>
+            <div class="item"><div class="label">Temp</div><div class="value">{{ data.temperature }} &deg;C</div></div>
+          </div>
+        </div>
+          <div>
+          <div class="flow" aria-label="Energy flow diagram" style="text-align:center;">
+            {% set grid_power_val = data.grid_power|replace('N/A','0')|float %}
+            {% set batt_current_val = data.battery_current|replace('N/A','0')|float %}
+            {% set ac_power_val = data.ac_output_power|replace('N/A','0')|float %}
+            {% set use_grid = grid_power_val > 0.1 %}
+            <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
+              <div class="d-flex align-items-center justify-content-center gap-3">
+                <div class="d-flex flex-column align-items-center">
+                  <i class="bi bi-lightning-charge-fill" style="font-size:28px; color:#7cd14f;"></i>
+                  <div class="label">Grid</div>
+                  <div class="label">{{ data.grid_voltage }} V</div>
+                </div>
+                <i class="bi bi-arrow-right-circle" style="font-size:28px; color:#5fae3f;"></i>
+                <div class="d-flex flex-column align-items-center">
+                  <i class="bi bi-hdd-network" style="font-size:32px; color:#5fae3f;"></i>
+                  <div class="label">Inverter</div>
+                  <div class="label">{{ data.status_text }}</div>
+                </div>
+                <i class="bi bi-arrow-right-circle" style="font-size:28px; color:#5fae3f;"></i>
+                <div class="d-flex flex-column align-items-center">
+                  <i class="bi bi-house-fill" style="font-size:32px; color:#7cd14f;"></i>
+                  <div class="label">Load</div>
+                  <div class="label">{{ data.ac_output_power }} W</div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
+                <div class="d-flex flex-column align-items-center">
+              <i class="bi {% if use_grid %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %}" style="font-size:24px; color:#5fae3f;"></i>
+              <i class="bi bi-battery-full" style="font-size:32px; color:#5fae3f; margin-top:4px;"></i>
+              <div class="label">Battery</div>
+              <div class="label">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
+              <div class="label">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
+            </div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:flex; align-items:center; gap:10px;">
+        <span style="font-weight:700;color:var(--muted);">History</span>
+        <a href="/" class="btn btn-sm btn-outline-success" style="padding:6px 12px; border-radius:8px;">Refresh</a>
+      </div>
+      <div style="margin-top:6px; display:flex; flex-direction:column; gap:14px;">
+        <canvas id="chartGridV" aria-label="Grid Voltage chart" style="width:100%; max-height:220px;"></canvas>
+        <canvas id="chartGridA" aria-label="Grid Current chart" style="width:100%; max-height:220px;"></canvas>
+        <canvas id="chartBattV" aria-label="Battery Voltage chart" style="width:100%; max-height:220px;"></canvas>
+        <canvas id="chartBattA" aria-label="Battery Current chart" style="width:100%; max-height:220px;"></canvas>
+      </div>
+    {% endif %}
+
+    <div class="actions" style="display:none;"></div>
+  </div>
+  <script>
+    const ctxGridV = document.getElementById('chartGridV');
+    const ctxGridA = document.getElementById('chartGridA');
+    const ctxBattV = document.getElementById('chartBattV');
+    const ctxBattA = document.getElementById('chartBattA');
+
+    async function loadHistory() {
+      try {
+        const res = await fetch('/history');
+        const rows = await res.json();
+        const labels = [];
+        const gridV = [];
+        const gridA = [];
+        const battV = [];
+        const battA = [];
+
+        rows.reverse().forEach(r => {
+          labels.push(r.created_at || '');
+          const p = r.payload || {};
+          gridV.push(p.grid_voltage === undefined ? null : Number(p.grid_voltage));
+          gridA.push(p.grid_current === undefined ? null : Number(p.grid_current));
+          battV.push(p.battery_voltage === undefined ? null : Number(p.battery_voltage));
+          battA.push(p.battery_current === undefined ? null : Number(p.battery_current));
+        });
+        // Downsample: keep first point in each 5-minute bucket and the last overall.
+        const stepLabels = [];
+        const stepGridV = [];
+        const stepGridA = [];
+        const stepBattV = [];
+        const stepBattA = [];
+        let lastBucket = null;
+        for (let i = 0; i < labels.length; i++) {
+          const ts = labels[i];
+          const bucket = ts && ts.length >= 16 ? ts.slice(0, 15) + (Math.floor(parseInt(ts.slice(14, 16), 10) / 5) * 5).toString().padStart(2, '0') : `${i}`;
+          const isLast = i === labels.length - 1;
+          if (bucket !== lastBucket || isLast) {
+            stepLabels.push(ts);
+            stepGridV.push(gridV[i]);
+            stepGridA.push(gridA[i]);
+            stepBattV.push(battV[i]);
+            stepBattA.push(battA[i]);
+            lastBucket = bucket;
+          }
+        }
+
+        new Chart(ctxGridV, {
+          type: 'line',
+          data: {
+            labels: stepLabels,
+            datasets: [
+              {label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {title:{display:true,text:'Volts'}}
+            },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+
+        new Chart(ctxGridA, {
+          type: 'line',
+          data: {
+            labels: stepLabels,
+            datasets: [
+              {label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {title:{display:true,text:'Amps'}}
+            },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+
+        new Chart(ctxBattV, {
+          type: 'line',
+          data: {
+            labels: stepLabels,
+            datasets: [
+              {label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true},
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {title:{display:true,text:'Volts'}}
+            },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+
+        new Chart(ctxBattA, {
+          type: 'line',
+          data: {
+            labels: stepLabels,
+            datasets: [
+              {label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {title:{display:true,text:'Amps'}}
+            },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+      } catch (e) {
+        console.error('History load failed', e);
+      }
+    }
+    loadHistory();
+  </script>
+</body>
+</html>
