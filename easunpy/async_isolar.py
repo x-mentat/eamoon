@@ -54,7 +54,7 @@ class AsyncISolar:
             try:
                 func_code = 0x04 if func == 4 else 0x03
                 requests = [
-                    create_request(self._get_next_transaction_id(), 0x0001, unit_id, func_code, start, count).encode()
+                    create_request(self._get_next_transaction_id(), 0x0001, unit_id, func_code, start, count)
                     for start, count in register_groups
                 ]
 
