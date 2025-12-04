@@ -9,10 +9,10 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 from data_store import get_latest_reading, init_db
-from data_store import get_recent_readings
+from data_store import get_recent_readings, get_readings_since
 
 app = Flask(__name__)
 
@@ -48,7 +48,15 @@ def home():
 @app.route("/history")
 def history():
     """Return recent readings for charts."""
-    readings = get_recent_readings(DB_PATH, limit=200)
+    days_param = request.args.get("days")
+    if days_param:
+        try:
+            days = float(days_param)
+            readings = get_readings_since(DB_PATH, days=days)
+        except (ValueError, TypeError):
+            readings = get_recent_readings(DB_PATH, limit=200)
+    else:
+        readings = get_recent_readings(DB_PATH, limit=200)
     return jsonify(readings)
 
 
