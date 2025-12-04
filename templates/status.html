@@ -373,7 +373,8 @@
           }
         });
 
-        new Chart(ctxBattV, {
+        if (charts.battV) charts.battV.destroy();
+        charts.battV = new Chart(ctxBattV, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true}] },
           options: {
@@ -383,7 +384,8 @@
           }
         });
 
-        new Chart(ctxBattA, {
+        if (charts.battA) charts.battA.destroy();
+        charts.battA = new Chart(ctxBattA, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}] },
           options: {
