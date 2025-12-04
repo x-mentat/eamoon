@@ -29,7 +29,8 @@
       padding: 28px 16px 40px;
     }
     .card {
-      width: min(1024px, 100%);
+      width: min(100%, 100%);
+      max-width: 1600px;
       background: var(--card);
       padding: 20px 22px;
       border-radius: 14px;
@@ -109,6 +110,17 @@
     .flow text { fill: #ffffff; font-family: "Segoe UI", sans-serif; }
     .flow .label { font-size: 12px; fill: #ffffff; }
     .flow .value { font-size: 14px; font-weight: 700; fill: #ffffff; }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      width: 100%;
+    }
+    .chart-cell { min-width: 0; }
+    .chart-cell canvas {
+      width: 100% !important;
+      height: 260px !important;
+    }
     .node {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -207,32 +219,32 @@
             <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
               <div class="d-flex align-items-center justify-content-center gap-3">
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-lightning-charge-fill" style="font-size:28px; color:#7cd14f;"></i>
-                  <div class="label">Grid</div>
-                  <div class="label">{{ data.grid_voltage }} V</div>
+                  <i class="bi bi-lightning-charge-fill" style="font-size:38px; color:#7cd14f;"></i>
+                  <div class="label" style="font-size:14px;">Grid</div>
+                  <div class="label" style="font-size:15px;">{{ data.grid_voltage }} V</div>
                 </div>
-                <i class="bi bi-arrow-right-circle" style="font-size:28px; color:#5fae3f;"></i>
+                <i class="bi bi-arrow-right-circle" style="font-size:34px; color:#5fae3f;"></i>
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-hdd-network" style="font-size:32px; color:#5fae3f;"></i>
-                  <div class="label">Inverter</div>
-                  <div class="label">{{ data.status_text }}</div>
+                  <i class="bi bi-hdd-network" style="font-size:40px; color:#5fae3f;"></i>
+                  <div class="label" style="font-size:14px;">Inverter</div>
+                  <div class="label" style="font-size:15px;">{{ data.status_text }}</div>
                 </div>
-                <i class="bi bi-arrow-right-circle" style="font-size:28px; color:#5fae3f;"></i>
+                <i class="bi bi-arrow-right-circle" style="font-size:34px; color:#5fae3f;"></i>
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-house-fill" style="font-size:32px; color:#7cd14f;"></i>
-                  <div class="label">Load</div>
-                  <div class="label">{{ data.ac_output_power }} W</div>
+                  <i class="bi bi-house-fill" style="font-size:40px; color:#7cd14f;"></i>
+                  <div class="label" style="font-size:14px;">Load</div>
+                  <div class="label" style="font-size:15px;">{{ data.ac_output_power }} W</div>
                 </div>
-              </div>
-              <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
-                <div class="d-flex flex-column align-items-center">
-              <i class="bi {% if use_grid %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %}" style="font-size:24px; color:#5fae3f;"></i>
-              <i class="bi bi-battery-full" style="font-size:32px; color:#5fae3f; margin-top:4px;"></i>
-              <div class="label">Battery</div>
-              <div class="label">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
-              <div class="label">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
-            </div>
           </div>
+                <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
+                  <div class="d-flex flex-column align-items-center">
+                    <i class="bi {% if use_grid %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %}" style="font-size:30px; color:#5fae3f;"></i>
+                    <i class="bi bi-battery-full" style="font-size:46px; color:#5fae3f; margin-top:4px;"></i>
+                    <div class="label" style="font-size:14px;">Battery</div>
+                    <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
+                    <div class="label" style="font-size:15px;">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
+                  </div>
+                </div>
         </div>
           </div>
         </div>
@@ -241,12 +253,19 @@
       <div style="margin-top:18px; display:flex; align-items:center; gap:10px;">
         <span style="font-weight:700;color:var(--muted);">History</span>
         <a href="/" class="btn btn-sm btn-outline-success" style="padding:6px 12px; border-radius:8px;">Refresh</a>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Period">
+          <button class="btn btn-outline-light" data-days="1">1d</button>
+          <button class="btn btn-outline-light" data-days="7">7d</button>
+          <button class="btn btn-outline-light" data-days="30">30d</button>
+        </div>
       </div>
-      <div style="margin-top:6px; display:flex; flex-direction:column; gap:14px;">
-        <canvas id="chartGridV" aria-label="Grid Voltage chart" style="width:100%; max-height:220px;"></canvas>
-        <canvas id="chartGridA" aria-label="Grid Current chart" style="width:100%; max-height:220px;"></canvas>
-        <canvas id="chartBattV" aria-label="Battery Voltage chart" style="width:100%; max-height:220px;"></canvas>
-        <canvas id="chartBattA" aria-label="Battery Current chart" style="width:100%; max-height:220px;"></canvas>
+      <div class="chart-grid" style="margin-top:6px;">
+        <div class="chart-cell"><canvas id="chartGridV" aria-label="Grid Voltage chart"></canvas></div>
+        <div class="chart-cell"><canvas id="chartGridP" aria-label="Grid Power chart"></canvas></div>
+        <div class="chart-cell"><canvas id="chartGridA" aria-label="Grid Current chart"></canvas></div>
+        <div class="chart-cell"><canvas id="chartBattV" aria-label="Battery Voltage chart"></canvas></div>
+        <div class="chart-cell"><canvas id="chartBattA" aria-label="Battery Current chart"></canvas></div>
+        <div class="chart-cell"><canvas id="chartLoadP" aria-label="Load Power chart"></canvas></div>
       </div>
     {% endif %}
 
@@ -254,34 +273,44 @@
   </div>
   <script>
     const ctxGridV = document.getElementById('chartGridV');
+    const ctxGridP = document.getElementById('chartGridP');
     const ctxGridA = document.getElementById('chartGridA');
     const ctxBattV = document.getElementById('chartBattV');
     const ctxBattA = document.getElementById('chartBattA');
+    const ctxLoadP = document.getElementById('chartLoadP');
+    const periodButtons = document.querySelectorAll('[data-days]');
+    let currentDays = null;
 
     async function loadHistory() {
       try {
-        const res = await fetch('/history');
-        const rows = await res.json();
+        const url = currentDays ? `/history?days=${currentDays}` : '/history';
+        const rows = await (await fetch(url)).json();
         const labels = [];
         const gridV = [];
+        const gridP = [];
         const gridA = [];
         const battV = [];
         const battA = [];
+        const loadP = [];
 
         rows.reverse().forEach(r => {
           labels.push(r.created_at || '');
           const p = r.payload || {};
           gridV.push(p.grid_voltage === undefined ? null : Number(p.grid_voltage));
+          gridP.push(p.grid_power === undefined ? null : Number(p.grid_power));
           gridA.push(p.grid_current === undefined ? null : Number(p.grid_current));
           battV.push(p.battery_voltage === undefined ? null : Number(p.battery_voltage));
           battA.push(p.battery_current === undefined ? null : Number(p.battery_current));
+          loadP.push(p.ac_output_power === undefined ? null : Number(p.ac_output_power));
         });
-        // Downsample: keep first point in each 5-minute bucket and the last overall.
+        // Downsample: first point per 5-minute bucket and the last overall.
         const stepLabels = [];
         const stepGridV = [];
+        const stepGridP = [];
         const stepGridA = [];
         const stepBattV = [];
         const stepBattA = [];
+        const stepLoadP = [];
         let lastBucket = null;
         for (let i = 0; i < labels.length; i++) {
           const ts = labels[i];
@@ -290,77 +319,71 @@
           if (bucket !== lastBucket || isLast) {
             stepLabels.push(ts);
             stepGridV.push(gridV[i]);
+            stepGridP.push(gridP[i]);
             stepGridA.push(gridA[i]);
             stepBattV.push(battV[i]);
             stepBattA.push(battA[i]);
+            stepLoadP.push(loadP[i]);
             lastBucket = bucket;
           }
         }
 
         new Chart(ctxGridV, {
           type: 'line',
-          data: {
-            labels: stepLabels,
-            datasets: [
-              {label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}
-            ]
-          },
+          data: { labels: stepLabels, datasets: [{label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}] },
           options: {
             responsive: true,
-            scales: {
-              y: {title:{display:true,text:'Volts'}}
-            },
+            scales: { y: {title:{display:true,text:'Volts'}} },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+
+        new Chart(ctxGridP, {
+          type: 'line',
+          data: { labels: stepLabels, datasets: [{label:'Grid W', data:stepGridP, borderColor:'#ffd479', tension:0.25, spanGaps:true}] },
+          options: {
+            responsive: true,
+            scales: { y: {title:{display:true,text:'Watts'}} },
             plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
           }
         });
 
         new Chart(ctxGridA, {
           type: 'line',
-          data: {
-            labels: stepLabels,
-            datasets: [
-              {label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}
-            ]
-          },
+          data: { labels: stepLabels, datasets: [{label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}] },
           options: {
             responsive: true,
-            scales: {
-              y: {title:{display:true,text:'Amps'}}
-            },
+            scales: { y: {title:{display:true,text:'Amps'}} },
+            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
+          }
+        });
+
+        new Chart(ctxLoadP, {
+          type: 'line',
+          data: { labels: stepLabels, datasets: [{label:'Load W', data:stepLoadP, borderColor:'#9b8cff', tension:0.25, spanGaps:true}] },
+          options: {
+            responsive: true,
+            scales: { y: {title:{display:true,text:'Watts'}} },
             plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
           }
         });
 
         new Chart(ctxBattV, {
           type: 'line',
-          data: {
-            labels: stepLabels,
-            datasets: [
-              {label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true},
-            ]
-          },
+          data: { labels: stepLabels, datasets: [{label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true}] },
           options: {
             responsive: true,
-            scales: {
-              y: {title:{display:true,text:'Volts'}}
-            },
+            scales: { y: {title:{display:true,text:'Volts'}} },
             plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
           }
         });
 
         new Chart(ctxBattA, {
           type: 'line',
-          data: {
-            labels: stepLabels,
-            datasets: [
-              {label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}
-            ]
-          },
+          data: { labels: stepLabels, datasets: [{label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}] },
           options: {
             responsive: true,
-            scales: {
-              y: {title:{display:true,text:'Amps'}}
-            },
+            scales: { y: {title:{display:true,text:'Amps'}} },
             plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
           }
         });
@@ -368,7 +391,14 @@
         console.error('History load failed', e);
       }
     }
+    periodButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentDays = btn.getAttribute('data-days');
+        loadHistory();
+      });
+    });
     loadHistory();
+    setInterval(() => window.location.reload(), 60000);
   </script>
 </body>
 </html>

@@ -81,3 +81,26 @@ def get_recent_readings(db_path: str | Path, limit: int = 50) -> list[Dict[str, 
         payload = json.loads(payload_json) if payload_json else None
         result.append({"created_at": created_at, "payload": payload, "error": error})
     return result
+
+
+def get_readings_since(db_path: str | Path, days: float) -> list[Dict[str, Any]]:
+    """
+    Return readings from the past `days` days.
+    """
+    path = Path(db_path)
+    if not path.exists():
+        return []
+
+    with sqlite3.connect(path) as conn:
+        rows = conn.execute(
+            "SELECT created_at, payload, error FROM readings "
+            "WHERE created_at >= datetime('now', ?)"
+            "ORDER BY id DESC",
+            (f"-{days} days",),
+        ).fetchall()
+
+    result = []
+    for created_at, payload_json, error in rows:
+        payload = json.loads(payload_json) if payload_json else None
+        result.append({"created_at": created_at, "payload": payload, "error": error})
+    return result
