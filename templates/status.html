@@ -362,7 +362,8 @@
           }
         });
 
-        new Chart(ctxLoadP, {
+        if (charts.loadP) charts.loadP.destroy();
+        charts.loadP = new Chart(ctxLoadP, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Load W', data:stepLoadP, borderColor:'#9b8cff', tension:0.25, spanGaps:true}] },
           options: {
