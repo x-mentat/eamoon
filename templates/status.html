@@ -280,6 +280,7 @@
     const ctxLoadP = document.getElementById('chartLoadP');
     const periodButtons = document.querySelectorAll('[data-days]');
     let currentDays = null;
+    const charts = {};
 
     async function loadHistory() {
       try {
@@ -328,7 +329,8 @@
           }
         }
 
-        new Chart(ctxGridV, {
+        if (charts.gridV) charts.gridV.destroy();
+        charts.gridV = new Chart(ctxGridV, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}] },
           options: {
@@ -338,7 +340,8 @@
           }
         });
 
-        new Chart(ctxGridP, {
+        if (charts.gridP) charts.gridP.destroy();
+        charts.gridP = new Chart(ctxGridP, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid W', data:stepGridP, borderColor:'#ffd479', tension:0.25, spanGaps:true}] },
           options: {
@@ -348,7 +351,8 @@
           }
         });
 
-        new Chart(ctxGridA, {
+        if (charts.gridA) charts.gridA.destroy();
+        charts.gridA = new Chart(ctxGridA, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}] },
           options: {
@@ -358,7 +362,8 @@
           }
         });
 
-        new Chart(ctxLoadP, {
+        if (charts.loadP) charts.loadP.destroy();
+        charts.loadP = new Chart(ctxLoadP, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Load W', data:stepLoadP, borderColor:'#9b8cff', tension:0.25, spanGaps:true}] },
           options: {
@@ -368,7 +373,8 @@
           }
         });
 
-        new Chart(ctxBattV, {
+        if (charts.battV) charts.battV.destroy();
+        charts.battV = new Chart(ctxBattV, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true}] },
           options: {
@@ -378,7 +384,8 @@
           }
         });
 
-        new Chart(ctxBattA, {
+        if (charts.battA) charts.battA.destroy();
+        charts.battA = new Chart(ctxBattA, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}] },
           options: {
