@@ -280,6 +280,7 @@
     const ctxLoadP = document.getElementById('chartLoadP');
     const periodButtons = document.querySelectorAll('[data-days]');
     let currentDays = null;
+    const charts = {};
 
     async function loadHistory() {
       try {
