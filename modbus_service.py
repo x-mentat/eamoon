@@ -123,16 +123,17 @@ async def collect_once(inverter: AsyncISolar) -> None:
 async def run_forever() -> None:
     init_db(DB_PATH)
 
-    local_ip = _resolve_local_ip()
-    if not local_ip:
-        raise RuntimeError("Could not determine local IP; set LOCAL_IP env var")
+    def _new_inverter() -> AsyncISolar:
+        local_ip = _resolve_local_ip()
+        if not local_ip:
+            raise RuntimeError("Could not determine local IP; set LOCAL_IP env var")
+        if INVERTER_MODEL not in MODEL_CONFIGS:
+            raise RuntimeError(f"Unsupported inverter model '{INVERTER_MODEL}'")
+        if not INVERTER_IP:
+            raise RuntimeError("INVERTER_IP (or MODBUS_HOST) is not set")
+        return AsyncISolar(INVERTER_IP, local_ip, model=INVERTER_MODEL)
 
-    if INVERTER_MODEL not in MODEL_CONFIGS:
-        raise RuntimeError(f"Unsupported inverter model '{INVERTER_MODEL}'")
-    if not INVERTER_IP:
-        raise RuntimeError("INVERTER_IP (or MODBUS_HOST) is not set")
-
-    inverter = AsyncISolar(INVERTER_IP, local_ip, model=INVERTER_MODEL)
+    inverter = _new_inverter()
 
     logger.info(
         "Starting poller for %s (model=%s) -> %s every %ss",
@@ -147,6 +148,12 @@ async def run_forever() -> None:
         except Exception as exc:  # noqa: BLE001
             logger.error("Collect failed: %s", exc)
             save_reading(DB_PATH, None, str(exc))
+            # recreate inverter on failure (e.g., lost connection)
+            try:
+                inverter = _new_inverter()
+            except Exception as new_exc:  # noqa: BLE001
+                logger.error("Failed to recreate inverter: %s", new_exc)
+        await asyncio.sleep(POLL_INTERVAL)
         await asyncio.sleep(POLL_INTERVAL)
 
 
