@@ -329,7 +329,8 @@
           }
         }
 
-        new Chart(ctxGridV, {
+        if (charts.gridV) charts.gridV.destroy();
+        charts.gridV = new Chart(ctxGridV, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}] },
           options: {
@@ -339,7 +340,8 @@
           }
         });
 
-        new Chart(ctxGridP, {
+        if (charts.gridP) charts.gridP.destroy();
+        charts.gridP = new Chart(ctxGridP, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid W', data:stepGridP, borderColor:'#ffd479', tension:0.25, spanGaps:true}] },
           options: {
@@ -349,7 +351,8 @@
           }
         });
 
-        new Chart(ctxGridA, {
+        if (charts.gridA) charts.gridA.destroy();
+        charts.gridA = new Chart(ctxGridA, {
           type: 'line',
           data: { labels: stepLabels, datasets: [{label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}] },
           options: {
