@@ -94,7 +94,7 @@ def get_readings_since(db_path: str | Path, days: float) -> list[Dict[str, Any]]
     with sqlite3.connect(path) as conn:
         rows = conn.execute(
             "SELECT created_at, payload, error FROM readings "
-            "WHERE created_at >= datetime('now', ?)"
+            "WHERE created_at >= datetime('now', ?) "
             "ORDER BY id DESC",
             (f"-{days} days",),
         ).fetchall()
