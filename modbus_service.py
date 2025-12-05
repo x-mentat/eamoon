@@ -24,6 +24,7 @@ LOCAL_IP_ENV = os.getenv("LOCAL_IP")
 INVERTER_MODEL = os.getenv("INVERTER_MODEL", "ISOLAR_SMG_II_11K")
 DB_PATH = os.getenv("DB_PATH", "inverter.db")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
+MAX_CONSECUTIVE_ERRORS = int(os.getenv("MAX_CONSECUTIVE_ERRORS", "5"))
 
 
 def _resolve_local_ip() -> str:
@@ -47,7 +48,8 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
     freq_val = getattr(output, "frequency", None)
     if freq_val is None:
         freq_val = getattr(grid, "frequency", None)
-        freq_divisor = 1.0  # grid frequency in 4K is already scaled by 0.1
+        # grid frequency in 4K is already scaled by 0.1
+        freq_divisor = 1.0
     else:
         freq_divisor = 100.0
 
@@ -57,7 +59,9 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
         try:
             gp = getattr(grid, "power", None)
             gv = getattr(grid, "voltage", None)
-            raw_grid_current = gp / gv if gp not in (None, 0) and gv not in (None, 0) else None
+            raw_grid_current = (
+                gp / gv if gp not in (None, 0) and gv not in (None, 0) else None
+            )
         except Exception:
             raw_grid_current = None
 
@@ -74,7 +78,8 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
         "battery_power": _format_value(getattr(battery, "power", None), digits=0),
         "battery_soc": _format_value(getattr(battery, "soc", None), digits=0),
         "battery_charge_power": _format_value(
-            (getattr(grid, "power", None) or 0) - (getattr(output, "power", None) or 0),
+            (getattr(grid, "power", None) or 0)
+            - (getattr(output, "power", None) or 0),
             digits=0,
         ),
         "pv_input_voltage": _format_value(getattr(pv, "pv1_voltage", None), digits=1),
@@ -91,7 +96,11 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
 
 
 async def collect_once(inverter: AsyncISolar) -> None:
-    battery, pv, grid, output, status, *_ = await inverter.get_all_data()
+    # можна додати зовнішній таймаут, щоб не зависати назавжди
+    battery, pv, grid, output, status, *_ = await asyncio.wait_for(
+        inverter.get_all_data(),
+        timeout=POLL_INTERVAL * 2,  # наприклад, 2× інтервал опитування
+    )
 
     # Console debug: show raw dataclasses and their attributes
     def _dump(label, obj):
@@ -134,26 +143,55 @@ async def run_forever() -> None:
         return AsyncISolar(INVERTER_IP, local_ip, model=INVERTER_MODEL)
 
     inverter = _new_inverter()
+    failure_count = 0
 
     logger.info(
-        "Starting poller for %s (model=%s) -> %s every %ss",
+        "Starting poller for %s (model=%s) -> %s every %ss (max errors in a row: %s)",
         INVERTER_IP,
         INVERTER_MODEL,
         DB_PATH,
         POLL_INTERVAL,
+        MAX_CONSECUTIVE_ERRORS,
     )
+
     while True:
         try:
             await collect_once(inverter)
         except Exception as exc:  # noqa: BLE001
-            logger.error("Collect failed: %s", exc)
+            failure_count += 1
+            logger.error(
+                "Collect failed (%d/%d): %s",
+                failure_count,
+                MAX_CONSECUTIVE_ERRORS,
+                exc,
+            )
             save_reading(DB_PATH, None, str(exc))
-            # recreate inverter on failure (e.g., lost connection)
+
+            # Якщо надто багато фейлів підряд — валимося, хай systemd рестартане сервіс.
+            if failure_count >= MAX_CONSECUTIVE_ERRORS:
+                logger.critical(
+                    "Too many consecutive errors (%d). Exiting to allow service restart.",
+                    failure_count,
+                )
+                # даємо трошки часу на лог/флаш, перед тим як впасти
+                await asyncio.sleep(1)
+                raise
+
+            # пробуємо перевідкрити інвертор між спробами
             try:
                 inverter = _new_inverter()
+                logger.info("Re-created AsyncISolar instance after error")
             except Exception as new_exc:  # noqa: BLE001
                 logger.error("Failed to recreate inverter: %s", new_exc)
-        await asyncio.sleep(POLL_INTERVAL)
+
+        else:
+            # успішний цикл — скидаємо лічильник помилок
+            if failure_count:
+                logger.info(
+                    "Collect succeeded after %d consecutive errors", failure_count
+                )
+            failure_count = 0
+
         await asyncio.sleep(POLL_INTERVAL)
 
 
@@ -168,6 +206,9 @@ def main() -> int:
     except KeyboardInterrupt:
         logger.info("Poller stopped by user")
         return 0
+    except Exception as exc:  # додатково логнемо фатальний
+        logger.critical("Poller crashed: %s", exc)
+        return 1
 
 
 if __name__ == "__main__":

@@ -1,12 +1,3 @@
-"""Telegram bot:
-- /status  -> статус мережі + споживання + батарея (українською)
-- /battery -> детальний статус батареї
-- /chatid  -> показує chat_id
-- автопостинг при зникненні / відновленні мережі:
-  + заголовок (мережу відновлено/мережа зникла)
-  + повний статус (як для /status) з інтелектуальним попередженням, якщо батарея < 20%.
-"""
-
 from __future__ import annotations
 
 import json
@@ -68,11 +59,33 @@ def to_float(val: Any) -> Optional[float]:
     try:
         if val is None:
             return None
-        if isinstance(val, str) and val.strip() == "N/A":
+        if isinstance(val, str) and val.strip().upper() == "N/A":
             return None
         return float(val)
     except Exception:
         return None
+
+
+def all_na(payload: Dict[str, Any], keys: List[str]) -> bool:
+    """
+    Повертає True, якщо для всіх перелічених ключів значення == 'N/A' або None.
+    Якщо жодного ключа не знайшли у payload – повертає False.
+    """
+    has_any = False
+    for k in keys:
+        if k not in payload:
+            continue
+        has_any = True
+        v = payload.get(k)
+        if v is None:
+            # Окей, це теж "немає значення"
+            continue
+        if isinstance(v, str) and v.strip().upper() == "N/A":
+            # Теж "немає значення"
+            continue
+        # якщо хоч одне значення не N/A і не None -> вже не "все N/A"
+        return False
+    return has_any
 
 
 def is_grid_up(payload: Dict[str, Any]) -> bool:
@@ -119,6 +132,24 @@ def build_status_text() -> str:
     if not payload:
         return "Дані ще не отримано."
 
+    # --- Якщо все важливе N/A -> вважаємо, що зв'язок втрачено ---
+    if all_na(
+        payload,
+        [
+            "grid_voltage",
+            "grid_power",
+            "ac_output_power",
+            "battery_voltage",
+            "battery_current",
+            "battery_soc",
+        ],
+    ):
+        return (
+            "Зв'язок з інвертором втрачено.\n"
+            "Дані з інвертора зараз недоступні (усі основні показники N/A).\n"
+            f"Остання спроба оновлення: {ts or 'невідомо'}"
+        )
+
     net_state = (
         "⚡ Мережа: Є (ONLINE)" if is_grid_up(payload) else "🚨 Мережі немає (OFFLINE)"
     )
@@ -132,9 +163,7 @@ def build_status_text() -> str:
     # Батарея
     soc = get_battery_soc(payload)
     if soc is not None:
-        parts.append(
-            f"Заряд батареї: {soc:.0f}% {battery_emoji(soc)}"
-        )
+        parts.append(f"Заряд батареї: {soc:.0f}% {battery_emoji(soc)}")
 
     mapping = {
         "grid_voltage": "Напруга мережі",
@@ -168,6 +197,14 @@ def build_battery_text() -> str:
 
     if not payload:
         return "Дані по батареї ще не отримано."
+
+    # Якщо по батареї всі ключові поля N/A -> теж вважаємо, що немає зв'язку
+    if all_na(payload, ["battery_voltage", "battery_current", "battery_soc"]):
+        return (
+            "Зв'язок з інвертором втрачено.\n"
+            "Дані по батареї зараз недоступні (усі показники N/A).\n"
+            f"Остання спроба оновлення: {ts or 'невідомо'}"
+        )
 
     soc = get_battery_soc(payload)
     parts: List[str] = ["🔋 Статус батареї"]
@@ -315,6 +352,7 @@ def main() -> int:
         if now - last_grid_check >= POLL_INTERVAL:
             payload, error, ts = get_latest_reading(DB_PATH)
             if payload and not error:
+                # тут, якщо все N/A, is_grid_up поверне False (бо to_float -> None)
                 grid_up = is_grid_up(payload)
 
                 if previous_state is None:
