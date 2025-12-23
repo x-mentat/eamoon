@@ -240,7 +240,7 @@
                 <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
                   <div class="d-flex flex-column align-items-center">
                     <i class="bi {% if use_grid %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %}" style="font-size:30px; color:#5fae3f;"></i>
-                    <i class="bi bi-battery-full" style="font-size:46px; color:#5fae3f; margin-top:4px;"></i>
+                    <i class="bi bi-battery-full" id="batteryIcon" style="font-size:46px; color:#5fae3f; margin-top:4px;"></i>
                     <div class="label" style="font-size:14px;">Battery</div>
                     <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
                     <div class="label" style="font-size:15px;">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
@@ -534,6 +534,30 @@
         loadHistory();
       });
     });
+    
+    // Update battery icon color based on SOC
+    function updateBatteryColor() {
+      const socText = document.querySelector('[data-days="1"]')?.closest('.card')?.querySelector('[style*="Battery SOC"]')?.parentElement?.textContent || '';
+      const socMatch = document.body.textContent.match(/Battery SOC.*?(\d+)/);
+      if (socMatch) {
+        const soc = parseInt(socMatch[1], 10);
+        const icon = document.getElementById('batteryIcon');
+        if (icon) {
+          if (soc >= 80) {
+            icon.style.color = '#7cd14f';  // Green
+          } else if (soc >= 50) {
+            icon.style.color = '#fbbf24';  // Yellow/Amber
+          } else if (soc >= 20) {
+            icon.style.color = '#f97316';  // Orange
+          } else {
+            icon.style.color = '#ef4444';  // Red
+          }
+        }
+      }
+    }
+    
+    updateBatteryColor();
+    setInterval(updateBatteryColor, 5000);
     
     loadHistory();
     setInterval(() => window.location.reload(), 60000);
