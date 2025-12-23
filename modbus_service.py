@@ -96,6 +96,7 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
 
 
 async def collect_once(inverter: AsyncISolar) -> None:
+    """Collect a single reading from the inverter."""
     # можна додати зовнішній таймаут, щоб не зависати назавжди
     battery, pv, grid, output, status, *_ = await asyncio.wait_for(
         inverter.get_all_data(),

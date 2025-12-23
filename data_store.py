@@ -8,7 +8,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-Schema = """
+SCHEMA = """
 CREATE TABLE IF NOT EXISTS readings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL,
@@ -23,11 +23,15 @@ def init_db(db_path: str | Path) -> None:
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as conn:
-        conn.execute(Schema)
+        conn.execute(SCHEMA)
         conn.commit()
 
 
-def save_reading(db_path: str | Path, payload: Optional[Dict[str, Any]], error: Optional[str]) -> None:
+def save_reading(
+    db_path: str | Path,
+    payload: Optional[Dict[str, Any]],
+    error: Optional[str],
+) -> None:
     """Persist a single reading (or error) to the database."""
     path = Path(db_path)
     timestamp = datetime.datetime.utcnow().isoformat(timespec="seconds")
@@ -40,7 +44,9 @@ def save_reading(db_path: str | Path, payload: Optional[Dict[str, Any]], error: 
         conn.commit()
 
 
-def get_latest_reading(db_path: str | Path) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
+def get_latest_reading(
+    db_path: str | Path,
+) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
     """
     Fetch the most recent reading.
     Returns (payload_dict, error_text, created_at_iso).

@@ -1,11 +1,12 @@
-# easunpy/models.py
+"""Data models and configurations for inverter communication."""
+import datetime
 from dataclasses import dataclass, field
 from enum import Enum
-import datetime
-from typing import Dict, Optional, Callable, Any, List
+from typing import Any, Callable, Dict, List, Optional
 
 @dataclass
 class BatteryData:
+    """Battery state and statistics."""
     voltage: float
     current: float
     power: int
@@ -14,6 +15,7 @@ class BatteryData:
 
 @dataclass
 class PVData:
+    """Solar panel generation data."""
     total_power: int
     charging_power: int
     charging_current: float
@@ -29,12 +31,14 @@ class PVData:
 
 @dataclass
 class GridData:
+    """Mains grid parameters."""
     voltage: float
     power: int
     frequency: int
 
 @dataclass
 class OutputData:
+    """Output/load parameters."""
     voltage: float
     current: float
     power: int
@@ -62,8 +66,15 @@ class RatingData:
     charger_source_priority: str
 
 class OperatingMode(Enum):
-    SUB = 2; SBU = 3
-    POWER_ON = 10; STANDBY = 11; LINE = 12; BATTERY = 13; FAULT = 14; POWER_SAVING = 15
+    """Inverter operating modes."""
+    SUB = 2
+    SBU = 3
+    POWER_ON = 10
+    STANDBY = 11
+    LINE = 12
+    BATTERY = 13
+    FAULT = 14
+    POWER_SAVING = 15
     UNKNOWN = 99
 
 @dataclass

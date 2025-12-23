@@ -211,10 +211,18 @@ if __name__ == "__main__":
     # Parse CLI arguments
     import argparse
     parser = argparse.ArgumentParser(description="Control Tuya devices")
-    parser.add_argument("action", nargs="?", default="list",
-                        help="Action: list (default), off <device_id>, on <device_id>, status <device_id>")
-    parser.add_argument("device_id", nargs="?", default="",
-                        help="Device ID for off/on/status actions")
+    parser.add_argument(
+        "action",
+        nargs="?",
+        default="list",
+        help="Action: list (default), off <device_id>, on <device_id>, status",
+    )
+    parser.add_argument(
+        "device_id",
+        nargs="?",
+        default="",
+        help="Device ID for off/on/status actions",
+    )
     args = parser.parse_args()
 
     action = args.action

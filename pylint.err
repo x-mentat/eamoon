@@ -1,0 +1,323 @@
+Run pylint $(git ls-files '*.py')
+7
+************* Module app
+8
+app.py:11:0: E0401: Unable to import 'dotenv' (import-error)
+9
+app.py:12:0: E0401: Unable to import 'flask' (import-error)
+10
+app.py:32:0: C0116: Missing function or method docstring (missing-function-docstring)
+11
+************* Module data_store
+12
+data_store.py:30:0: C0301: Line too long (103/100) (line-too-long)
+13
+data_store.py:43:0: C0301: Line too long (109/100) (line-too-long)
+14
+data_store.py:11:0: C0103: Constant name "Schema" doesn't conform to UPPER_CASE naming style (invalid-name)
+15
+************* Module easunpy.__init__
+16
+easunpy/__init__.py:13:0: C0301: Line too long (104/100) (line-too-long)
+17
+easunpy/__init__.py:18:0: C0301: Line too long (108/100) (line-too-long)
+18
+easunpy/__init__.py:21:0: C0303: Trailing whitespace (trailing-whitespace)
+19
+easunpy/__init__.py:30:0: C0305: Trailing newlines (trailing-newlines)
+20
+************* Module easunpy
+21
+easunpy/__init__.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+22
+easunpy/__init__.py:22:4: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+23
+easunpy/__init__.py:23:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+24
+easunpy/__init__.py:26:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+25
+************* Module easunpy.__main__
+26
+easunpy/__main__.py:45:0: C0303: Trailing whitespace (trailing-whitespace)
+27
+easunpy/__main__.py:50:0: C0303: Trailing whitespace (trailing-whitespace)
+28
+easunpy/__main__.py:56:0: C0303: Trailing whitespace (trailing-whitespace)
+29
+easunpy/__main__.py:57:0: C0301: Line too long (102/100) (line-too-long)
+30
+easunpy/__main__.py:58:0: C0303: Trailing whitespace (trailing-whitespace)
+31
+easunpy/__main__.py:69:0: C0303: Trailing whitespace (trailing-whitespace)
+32
+easunpy/__main__.py:80:0: C0303: Trailing whitespace (trailing-whitespace)
+33
+easunpy/__main__.py:95:0: C0303: Trailing whitespace (trailing-whitespace)
+34
+easunpy/__main__.py:103:0: C0303: Trailing whitespace (trailing-whitespace)
+35
+easunpy/__main__.py:105:0: C0301: Line too long (103/100) (line-too-long)
+36
+easunpy/__main__.py:107:0: C0301: Line too long (103/100) (line-too-long)
+37
+easunpy/__main__.py:113:0: C0303: Trailing whitespace (trailing-whitespace)
+38
+easunpy/__main__.py:118:0: C0303: Trailing whitespace (trailing-whitespace)
+39
+easunpy/__main__.py:130:0: C0303: Trailing whitespace (trailing-whitespace)
+40
+easunpy/__main__.py:136:0: C0303: Trailing whitespace (trailing-whitespace)
+41
+easunpy/__main__.py:139:0: C0301: Line too long (115/100) (line-too-long)
+42
+easunpy/__main__.py:140:0: C0303: Trailing whitespace (trailing-whitespace)
+43
+easunpy/__main__.py:149:0: C0303: Trailing whitespace (trailing-whitespace)
+44
+easunpy/__main__.py:160:0: C0301: Line too long (112/100) (line-too-long)
+45
+easunpy/__main__.py:163:0: C0303: Trailing whitespace (trailing-whitespace)
+46
+easunpy/__main__.py:168:0: C0303: Trailing whitespace (trailing-whitespace)
+47
+easunpy/__main__.py:173:0: C0303: Trailing whitespace (trailing-whitespace)
+48
+easunpy/__main__.py:178:0: C0303: Trailing whitespace (trailing-whitespace)
+49
+easunpy/__main__.py:189:0: C0303: Trailing whitespace (trailing-whitespace)
+50
+easunpy/__main__.py:199:0: C0303: Trailing whitespace (trailing-whitespace)
+51
+easunpy/__main__.py:207:0: C0301: Line too long (107/100) (line-too-long)
+52
+easunpy/__main__.py:228:0: C0301: Line too long (140/100) (line-too-long)
+53
+easunpy/__main__.py:229:0: C0301: Line too long (138/100) (line-too-long)
+54
+easunpy/__main__.py:232:0: C0301: Line too long (142/100) (line-too-long)
+55
+easunpy/__main__.py:233:0: C0301: Line too long (103/100) (line-too-long)
+56
+easunpy/__main__.py:235:0: C0301: Line too long (103/100) (line-too-long)
+57
+easunpy/__main__.py:262:0: C0301: Line too long (122/100) (line-too-long)
+58
+easunpy/__main__.py:263:0: C0301: Line too long (118/100) (line-too-long)
+59
+easunpy/__main__.py:264:0: C0301: Line too long (106/100) (line-too-long)
+60
+easunpy/__main__.py:265:0: C0301: Line too long (116/100) (line-too-long)
+61
+easunpy/__main__.py:267:99: C0303: Trailing whitespace (trailing-whitespace)
+62
+easunpy/__main__.py:269:0: C0303: Trailing whitespace (trailing-whitespace)
+63
+easunpy/__main__.py:297:0: C0303: Trailing whitespace (trailing-whitespace)
+64
+easunpy/__main__.py:312:0: C0301: Line too long (103/100) (line-too-long)
+65
+easunpy/__main__.py:314:0: C0303: Trailing whitespace (trailing-whitespace)
+66
+easunpy/__main__.py:316:0: C0301: Line too long (106/100) (line-too-long)
+67
+easunpy/__main__.py:328:0: C0303: Trailing whitespace (trailing-whitespace)
+68
+easunpy/__main__.py:337:29: C0303: Trailing whitespace (trailing-whitespace)
+69
+easunpy/__main__.py:6:0: E0401: Unable to import 'rich.live' (import-error)
+70
+easunpy/__main__.py:7:0: E0401: Unable to import 'rich.table' (import-error)
+71
+easunpy/__main__.py:8:0: E0401: Unable to import 'rich.console' (import-error)
+72
+easunpy/__main__.py:9:0: E0401: Unable to import 'rich.layout' (import-error)
+73
+easunpy/__main__.py:10:0: E0401: Unable to import 'rich.text' (import-error)
+74
+easunpy/__main__.py:28:4: R0913: Too many arguments (6/5) (too-many-arguments)
+75
+easunpy/__main__.py:28:4: R0917: Too many positional arguments (6/5) (too-many-positional-arguments)
+76
+easunpy/__main__.py:42:0: R0912: Too many branches (20/12) (too-many-branches)
+77
+easunpy/__main__.py:42:0: R0915: Too many statements (73/50) (too-many-statements)
+78
+easunpy/__main__.py:196:0: R0912: Too many branches (26/12) (too-many-branches)
+79
+easunpy/__main__.py:196:0: R0915: Too many statements (55/50) (too-many-statements)
+80
+easunpy/__main__.py:260:0: C0116: Missing function or method docstring (missing-function-docstring)
+81
+easunpy/__main__.py:260:0: R0914: Too many local variables (17/15) (too-many-locals)
+82
+easunpy/__main__.py:332:11: W0718: Catching too general exception Exception (broad-exception-caught)
+83
+easunpy/__main__.py:311:27: W0718: Catching too general exception Exception (broad-exception-caught)
+84
+easunpy/__main__.py:325:19: W0718: Catching too general exception Exception (broad-exception-caught)
+85
+easunpy/__main__.py:260:0: R0915: Too many statements (51/50) (too-many-statements)
+86
+easunpy/__main__.py:337:4: R1722: Consider using 'sys.exit' instead (consider-using-sys-exit)
+87
+easunpy/__main__.py:11:0: C0411: standard import "datetime.datetime" should be placed before third party imports "rich.live.Live", "rich.table.Table", "rich.console.Console", "rich.layout.Layout", "rich.text.Text" (wrong-import-order)
+88
+easunpy/__main__.py:16:0: C0411: standard import "logging" should be placed before third party imports "rich.live.Live", "rich.table.Table", "rich.console.Console", "rich.layout.Layout", "rich.text.Text" and local imports "async_isolar.AsyncISolar", "utils.get_local_ip", "discover.discover_device", "models.BatteryData" (wrong-import-order)
+89
+************* Module easunpy.async_ascii_commands
+90
+easunpy/async_ascii_commands.py:54:0: C0303: Trailing whitespace (trailing-whitespace)
+91
+easunpy/async_ascii_commands.py:56:0: C0301: Line too long (119/100) (line-too-long)
+92
+easunpy/async_ascii_commands.py:76:0: C0301: Line too long (103/100) (line-too-long)
+93
+easunpy/async_ascii_commands.py:88:0: C0303: Trailing whitespace (trailing-whitespace)
+94
+easunpy/async_ascii_commands.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+95
+easunpy/async_ascii_commands.py:35:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+96
+easunpy/async_ascii_commands.py:79:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+97
+easunpy/async_ascii_commands.py:101:11: W0718: Catching too general exception Exception (broad-exception-caught)
+98
+easunpy/async_ascii_commands.py:87:27: C0321: More than one statement on a single line (multiple-statements)
+99
+easunpy/async_ascii_commands.py:102:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+350
+easunpy/models.py:70:0: C0115: Missing class docstring (missing-class-docstring)
+351
+easunpy/models.py:78:0: C0115: Missing class docstring (missing-class-docstring)
+352
+easunpy/models.py:84:0: C0115: Missing class docstring (missing-class-docstring)
+353
+easunpy/models.py:91:4: C0116: Missing function or method docstring (missing-function-docstring)
+354
+easunpy/models.py:95:4: C0116: Missing function or method docstring (missing-function-docstring)
+355
+easunpy/models.py:99:4: C0116: Missing function or method docstring (missing-function-docstring)
+356
+************* Module easunpy.utils
+357
+easunpy/utils.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+358
+easunpy/utils.py:16:11: W0718: Catching too general exception Exception (broad-exception-caught)
+359
+************* Module modbus_service
+360
+modbus_service.py:10:0: E0401: Unable to import 'dotenv' (import-error)
+361
+modbus_service.py:40:11: W0718: Catching too general exception Exception (broad-exception-caught)
+362
+modbus_service.py:65:15: W0718: Catching too general exception Exception (broad-exception-caught)
+363
+modbus_service.py:98:0: C0116: Missing function or method docstring (missing-function-docstring)
+364
+modbus_service.py:132:0: C0116: Missing function or method docstring (missing-function-docstring)
+365
+modbus_service.py:160:15: W0718: Catching too general exception Exception (broad-exception-caught)
+366
+modbus_service.py:184:19: W0718: Catching too general exception Exception (broad-exception-caught)
+367
+modbus_service.py:198:0: C0116: Missing function or method docstring (missing-function-docstring)
+368
+modbus_service.py:209:11: W0718: Catching too general exception Exception (broad-exception-caught)
+369
+************* Module telegram_bot
+370
+telegram_bot.py:26:0: C0301: Line too long (111/100) (line-too-long)
+371
+telegram_bot.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+372
+telegram_bot.py:11:0: E0401: Unable to import 'dotenv' (import-error)
+373
+telegram_bot.py:34:17: W0212: Access to a protected member _create_unverified_context of a client class (protected-access)
+374
+telegram_bot.py:40:0: C0116: Missing function or method docstring (missing-function-docstring)
+375
+telegram_bot.py:64:0: C0116: Missing function or method docstring (missing-function-docstring)
+376
+telegram_bot.py:71:11: W0718: Catching too general exception Exception (broad-exception-caught)
+377
+telegram_bot.py:115:11: W0718: Catching too general exception Exception (broad-exception-caught)
+378
+telegram_bot.py:147:11: W0718: Catching too general exception Exception (broad-exception-caught)
+379
+telegram_bot.py:144:19: W0718: Catching too general exception Exception (broad-exception-caught)
+380
+telegram_bot.py:172:11: W0718: Catching too general exception Exception (broad-exception-caught)
+381
+telegram_bot.py:169:19: W0718: Catching too general exception Exception (broad-exception-caught)
+382
+telegram_bot.py:319:0: C0116: Missing function or method docstring (missing-function-docstring)
+383
+telegram_bot.py:337:11: W0718: Catching too general exception Exception (broad-exception-caught)
+384
+telegram_bot.py:370:0: C0116: Missing function or method docstring (missing-function-docstring)
+385
+telegram_bot.py:370:0: R0914: Too many local variables (24/15) (too-many-locals)
+386
+telegram_bot.py:415:23: W0718: Catching too general exception Exception (broad-exception-caught)
+387
+telegram_bot.py:422:23: W0718: Catching too general exception Exception (broad-exception-caught)
+388
+telegram_bot.py:429:23: W0718: Catching too general exception Exception (broad-exception-caught)
+389
+telegram_bot.py:380:4: R1702: Too many nested blocks (7/5) (too-many-nested-blocks)
+390
+telegram_bot.py:477:31: W0718: Catching too general exception Exception (broad-exception-caught)
+391
+telegram_bot.py:370:0: R0912: Too many branches (23/12) (too-many-branches)
+392
+telegram_bot.py:370:0: R0915: Too many statements (70/50) (too-many-statements)
+393
+telegram_bot.py:380:4: R1702: Too many nested blocks (6/5) (too-many-nested-blocks)
+394
+telegram_bot.py:435:28: W0612: Unused variable 'ts' (unused-variable)
+395
+************* Module tuya
+396
+tuya.py:215:0: C0301: Line too long (107/100) (line-too-long)
+397
+tuya.py:232:0: C0301: Line too long (101/100) (line-too-long)
+398
+tuya.py:10:0: E0401: Unable to import 'requests' (import-error)
+399
+tuya.py:11:0: E0401: Unable to import 'dotenv' (import-error)
+400
+tuya.py:45:4: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+401
+tuya.py:65:4: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+402
+tuya.py:109:22: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+403
+tuya.py:109:34: W0621: Redefining name 'device_id' from outer scope (line 221) (redefined-outer-name)
+404
+tuya.py:116:4: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+405
+tuya.py:116:16: W0621: Redefining name 'device_id' from outer scope (line 221) (redefined-outer-name)
+406
+tuya.py:134:20: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+407
+tuya.py:134:32: W0621: Redefining name 'device_id' from outer scope (line 221) (redefined-outer-name)
+408
+tuya.py:139:17: W0621: Redefining name 'token' from outer scope (line 201) (redefined-outer-name)
+409
+tuya.py:159:4: W0621: Redefining name 'result' from outer scope (line 228) (redefined-outer-name)
+410
+tuya.py:162:8: W0621: Redefining name 'devices' from outer scope (line 245) (redefined-outer-name)
+411
+tuya.py:139:29: W0613: Unused argument 'schema' (unused-argument)
+412
+tuya.py:171:19: W0621: Redefining name 'status_items' from outer scope (line 237) (redefined-outer-name)
+413
+tuya.py:251:8: C0103: Constant name "error_str" doesn't conform to UPPER_CASE naming style (invalid-name)
+414
+tuya.py:295:15: W0718: Catching too general exception Exception (broad-exception-caught)
+415
+-----------------------------------
+416
+Your code has been rated at 7.44/10
+419
+Error: Process completed with exit code 30.

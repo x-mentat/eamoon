@@ -1,3 +1,4 @@
+"""Utility functions for network operations."""
 import socket
 
 def get_local_ip():

@@ -42,31 +42,31 @@ class InverterData:
 def create_dashboard(inverter_data: InverterData, status_message: str | Text = "") -> Layout:
     """Create a dashboard layout with inverter data."""
     layout = Layout()
-    
+
     # Create tables for each section
     system_table = Table(title="System Status")
     system_table.add_column("Parameter")
     system_table.add_column("Value")
-    
+
     if inverter_data.system:
         # Show operating mode with appropriate color
         mode_style = "green"  # Default to green
         if "UNKNOWN" in inverter_data.system.mode_name:
             mode_style = "red bold"
-            
+
         system_table.add_row("Operating Mode", Text(inverter_data.system.mode_name, style=mode_style))
-        
+
         # Show inverter's internal time
         if inverter_data.system.inverter_time:
             system_table.add_row(
-                "Inverter Time", 
+                "Inverter Time",
                 inverter_data.system.inverter_time.strftime('%Y-%m-%d %H:%M:%S')
             )
 
     battery_table = Table(title="Battery Status")
     battery_table.add_column("Parameter")
     battery_table.add_column("Value")
-    
+
     if inverter_data.battery:
         battery_table.add_row("Voltage", f"{inverter_data.battery.voltage:.1f}V")
         battery_table.add_row("Current", f"{inverter_data.battery.current:.1f}A")
@@ -77,7 +77,7 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
     pv_table = Table(title="Solar Status")
     pv_table.add_column("Parameter")
     pv_table.add_column("Value")
-    
+
     if inverter_data.pv:
         # Add basic PV data with null checks
         if inverter_data.pv.total_power is not None:
@@ -92,7 +92,7 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
             pv_table.add_row("PV1 Current", f"{inverter_data.pv.pv1_current:.1f}A")
         if inverter_data.pv.pv1_power is not None:
             pv_table.add_row("PV1 Power", f"{inverter_data.pv.pv1_power}W")
-        
+
         # Only show PV2 data if it's supported and not None
         if inverter_data.pv.pv2_voltage is not None and inverter_data.pv.pv2_voltage > 0:
             pv_table.add_row("PV2 Voltage", f"{inverter_data.pv.pv2_voltage:.1f}V")
@@ -100,7 +100,7 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
                 pv_table.add_row("PV2 Current", f"{inverter_data.pv.pv2_current:.1f}A")
             if inverter_data.pv.pv2_power is not None:
                 pv_table.add_row("PV2 Power", f"{inverter_data.pv.pv2_power}W")
-        
+
         # Only show generated energy if supported and not None
         if inverter_data.pv.pv_generated_today is not None and inverter_data.pv.pv_generated_today > 0:
             pv_table.add_row("Generated Today", f"{inverter_data.pv.pv_generated_today:.2f}kWh")
@@ -110,12 +110,12 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
     grid_output_table = Table(title="Grid & Output Status")
     grid_output_table.add_column("Parameter")
     grid_output_table.add_column("Value")
-    
+
     if inverter_data.grid:
         grid_output_table.add_row("Grid Voltage", f"{inverter_data.grid.voltage:.1f}V")
         grid_output_table.add_row("Grid Power", f"{inverter_data.grid.power}W")
         grid_output_table.add_row("Grid Frequency", f"{inverter_data.grid.frequency/100:.2f}Hz")
-    
+
     if inverter_data.output:
         grid_output_table.add_row("Output Voltage", f"{inverter_data.output.voltage:.1f}V")
         grid_output_table.add_row("Output Current", f"{inverter_data.output.current:.1f}A")
@@ -127,17 +127,17 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
     header = Table.grid(padding=(0, 1))
     header.add_column("timestamp", justify="left")
     header.add_column("status", justify="right", width=40)  # Fixed width for status column
-    
+
     # Convert status_message to Text if it's a string
     if isinstance(status_message, str):
         status_text = Text(status_message, style="yellow bold")
     else:
         status_text = status_message
-    
+
     # Show both local time and last update time
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     last_update = inverter_data.last_update.strftime('%Y-%m-%d %H:%M:%S') if inverter_data.last_update else "Never"
-    
+
     time_text = Text(f"Local Time: {current_time}\nLast Update: {last_update}", style="white")
     header.add_row(time_text, status_text)
 
@@ -146,7 +146,7 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
         Layout(header),
         Layout(name="content", ratio=10)
     )
-    
+
     # Split main content into three columns
     layout["content"].split_row(
         Layout(system_table, name="system"),
@@ -160,22 +160,22 @@ def create_dashboard(inverter_data: InverterData, status_message: str | Text = "
 def create_info_layout(inverter_ip: str, local_ip: str, serial_number: str, status_message: str = "") -> Layout:
     """Create a layout showing connection information."""
     layout = Layout()
-    
+
     # Create info table
     info_table = Table(title="Inverter Monitor")
     info_table.add_column("Parameter")
     info_table.add_column("Value")
-    
+
     info_table.add_row("Inverter IP", inverter_ip)
     info_table.add_row("Local IP", local_ip)
     info_table.add_row("Serial Number", serial_number)
     info_table.add_row("Status", status_message)
-    
+
     # Add timestamp with right-aligned status
     header = Table.grid(padding=(0, 1))
     header.add_column("timestamp", justify="left")
     header.add_column("status", justify="right", width=40)  # Fixed width for status column
-    
+
     header.add_row(
         Text(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="white"),
         Text(status_message, style="yellow bold")
@@ -186,7 +186,7 @@ def create_info_layout(inverter_ip: str, local_ip: str, serial_number: str, stat
         Layout(header),
         Layout(name="main", ratio=8)
     )
-    
+
     layout["main"].split_row(
         Layout(info_table)
     )
@@ -196,7 +196,7 @@ def create_info_layout(inverter_ip: str, local_ip: str, serial_number: str, stat
 async def print_single_update(inverter_data: InverterData):
     """Print a single update in simple format."""
     console = Console()
-    
+
     if not inverter_data.system:
         console.print("[red]No data received from inverter")
         return
@@ -264,9 +264,9 @@ async def main():
     parser.add_argument('--interval', type=int, default=5, help='Update interval in seconds (default: 5)')
     parser.add_argument('--continuous', action='store_true', help='Show continuous dashboard view (default: False)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    parser.add_argument('--model', choices=list(MODEL_CONFIGS.keys()), default='ISOLAR_SMG_II_11K', 
+    parser.add_argument('--model', choices=list(MODEL_CONFIGS.keys()), default='ISOLAR_SMG_II_11K',
                        help='Inverter model (default: ISOLAR_SMG_II_11K)')
-    
+
     args = parser.parse_args()
 
     # Configure logging
@@ -294,7 +294,7 @@ async def main():
             return 1
 
     console = Console()
-    
+
     try:
         inverter = AsyncISolar(inverter_ip, local_ip, model=args.model)
         inverter_data = InverterData()
@@ -311,7 +311,7 @@ async def main():
                     except Exception as e:
                         layout = create_dashboard(inverter_data, Text(f"Error: {str(e)}", style="red"))
                         live.update(layout)
-                    
+
                     for remaining in range(args.interval - 1, 0, -1):
                         layout = create_dashboard(inverter_data, f"Next update in {remaining} seconds...")
                         live.update(layout)
@@ -325,7 +325,7 @@ async def main():
             except Exception as e:
                 console.print(f"[red]Error: {str(e)}")
                 return 1
-            
+
     except KeyboardInterrupt:
         console.print("\nMonitoring stopped by user")
         return 0
@@ -334,4 +334,4 @@ async def main():
         return 1
 
 if __name__ == "__main__":
-    exit(asyncio.run(main())) 
+    exit(asyncio.run(main()))
