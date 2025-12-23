@@ -1,3 +1,4 @@
+"""Telegram bot for inverter monitoring and smart device control."""
 from __future__ import annotations
 
 import json
@@ -38,6 +39,7 @@ UNVERIFIED_CTX = ssl._create_unverified_context()
 
 
 def send_message(chat_id: int | str, text: str) -> None:
+    """Send a message via Telegram bot API."""
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
 

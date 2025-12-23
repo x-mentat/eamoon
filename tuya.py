@@ -18,7 +18,10 @@ load_dotenv()
 # -----------------------------
 ACCESS_ID = (os.getenv("TUYA_ACCESS_ID", "") or "").strip()
 ACCESS_SECRET = (os.getenv("TUYA_ACCESS_SECRET", "") or "").strip()
-ENDPOINT = (os.getenv("TUYA_ENDPOINT", "https://openapi.tuyaeu.com") or "https://openapi.tuyaeu.com").strip()
+ENDPOINT = (
+    os.getenv("TUYA_ENDPOINT", "https://openapi.tuyaeu.com")
+    or "https://openapi.tuyaeu.com"
+).strip()
 PROJECT_ID = (os.getenv("TUYA_PROJECT_ID", "") or "").strip()
 APP_SCHEMA = (os.getenv("TUYA_APP_SCHEMA", "smartlife") or "smartlife").strip()
 USER_ID = (os.getenv("TUYA_USER_ID", "") or "").strip()
@@ -89,7 +92,7 @@ def _request(
         raise RuntimeError(f"Tuya API request failed ({path}): {e}") from e
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Invalid JSON response from Tuya API ({path}): {e}") from e
-    
+
     if not data.get("success"):
         error_msg = data.get("msg", "Unknown error")
         error_code = data.get("code", "N/A")
@@ -109,14 +112,23 @@ def get_device_status(token: str, device_id: str) -> Dict[str, Any]:
     return data["result"]
 
 
-def send_device_command(token: str, device_id: str, commands: list[Dict[str, Any]]) -> Dict[str, Any]:
+def send_device_command(
+    token: str, device_id: str, commands: list[Dict[str, Any]]
+) -> Dict[str, Any]:
     """Send one or more commands to a device.
 
-    Example command list:
-      [{"code": "switch_1", "value": False}]
+    Args:
+        token: Access token.
+        device_id: Device ID.
+        commands: List of command dicts, e.g. [{"code": "switch_1", "value": False}].
+
+    Returns:
+        API response.
     """
     body = {"commands": commands}
-    return _request("POST", f"/v1.0/devices/{device_id}/commands", body=body, token=token)
+    return _request(
+        "POST", f"/v1.0/devices/{device_id}/commands", body=body, token=token
+    )
 
 
 def turn_device_off(token: str, device_id: str) -> Dict[str, Any]:
@@ -125,9 +137,16 @@ def turn_device_off(token: str, device_id: str) -> Dict[str, Any]:
 
 
 def list_devices(token: str, schema: Optional[str] = None) -> list[Dict[str, Any]]:
-    """List devices in *user mode* using /v1.0/users/{user_id}/devices/.
+    """List devices in user mode using /v1.0/users/{user_id}/devices/.
 
     Requires TUYA_USER_ID to be set. If missing, raises an error with guidance.
+
+    Args:
+        token: Access token from get_token().
+        schema: Unused, kept for compatibility.
+
+    Returns:
+        List of device dictionaries.
     """
     if not USER_ID:
         raise RuntimeError(
@@ -167,7 +186,7 @@ if __name__ == "__main__":
     print(f"App Schema: {APP_SCHEMA}")
     print(f"User ID: {USER_ID or 'NOT SET'}")
     print("=" * 50)
-    
+
     # Validate credentials
     if not ACCESS_ID or not ACCESS_SECRET:
         print("\n✗ Error: TUYA_ACCESS_ID and TUYA_ACCESS_SECRET must be configured")
@@ -175,7 +194,7 @@ if __name__ == "__main__":
     if not USER_ID:
         print("\n✗ Error: TUYA_USER_ID must be set for user-mode operations")
         raise SystemExit(1)
-    
+
     # Get access token
     try:
         print("\n[1/3] Fetching access token...")
@@ -192,15 +211,23 @@ if __name__ == "__main__":
     # Parse CLI arguments
     import argparse
     parser = argparse.ArgumentParser(description="Control Tuya devices")
-    parser.add_argument("action", nargs="?", default="list", 
-                        help="Action: list (default), off <device_id>, on <device_id>, status <device_id>")
-    parser.add_argument("device_id", nargs="?", default="",
-                        help="Device ID for off/on/status actions")
+    parser.add_argument(
+        "action",
+        nargs="?",
+        default="list",
+        help="Action: list (default), off <device_id>, on <device_id>, status",
+    )
+    parser.add_argument(
+        "device_id",
+        nargs="?",
+        default="",
+        help="Device ID for off/on/status actions",
+    )
     args = parser.parse_args()
-    
+
     action = args.action
     device_id = args.device_id
-    
+
     # Handle non-list actions early
     if action in ("off", "on", "status") and device_id:
         try:
@@ -231,7 +258,7 @@ if __name__ == "__main__":
     except Exception as exc:
         error_str = str(exc)
         print(f"✗ Failed to list devices: {exc}")
-        
+
         if "1106" in error_str or "permission" in error_str.lower():
             print("\n[!] Permission Denied - User Mode")
             print("\nCheck:")
@@ -244,9 +271,9 @@ if __name__ == "__main__":
             print("- Verify TUYA_ACCESS_ID / TUYA_ACCESS_SECRET")
             print("- Verify TUYA_USER_ID")
             print("- Check endpoint region")
-        
+
         raise SystemExit(1) from exc
-    
+
     if not devices:
         print("\n⚠ No devices found for this user")
         raise SystemExit(1)
@@ -260,11 +287,11 @@ if __name__ == "__main__":
         if not dev_id:
             print(f"\n[{i}/{len(devices)}] Device missing 'id'; skipping")
             continue
-        
+
         name = dev.get("name", dev_id)
         category = dev.get("category", "unknown")
         product_name = dev.get("product_name", "N/A")
-        
+
         try:
             status = get_device_status(token, device_id=dev_id)
             status_items = status if isinstance(status, list) else status.get("status", [])
@@ -277,6 +304,6 @@ if __name__ == "__main__":
             print(f"\n[{i}/{len(devices)}] {name} ({category})")
             print(f"ID: {dev_id}")
             print(f"✗ Failed to fetch status: {exc}")
-    
+
     print("\n" + "=" * 50)
     print(f"Summary: {success_count}/{len(devices)} devices queried successfully")

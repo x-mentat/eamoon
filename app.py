@@ -1,8 +1,4 @@
-"""
-Minimal Flask app that serves the latest inverter reading from SQLite.
-Run modbus_service.py separately to collect data via AsyncISolar.
-"""
-
+"""Flask web server for inverter status dashboard with real-time charts."""
 from __future__ import annotations
 
 import os
@@ -11,8 +7,12 @@ from typing import Optional
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
-from data_store import get_latest_reading, init_db
-from data_store import get_recent_readings, get_readings_since
+from data_store import (
+    get_latest_reading,
+    get_readings_since,
+    get_recent_readings,
+    init_db,
+)
 
 app = Flask(__name__)
 
@@ -30,6 +30,7 @@ init_db(DB_PATH)
 
 @app.route("/")
 def home():
+    """Serve the main status dashboard."""
     data, error, updated_at = get_latest_reading(DB_PATH)
     status_error: Optional[str] = error
     if not data and not error:
