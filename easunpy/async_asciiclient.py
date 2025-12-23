@@ -1,6 +1,7 @@
 # easunpy/async_asciiclient.py
 # Asynchronous client for Voltronic ASCII-based inverters.
 
+"""Asynchronous ASCII client for inverter protocol."""
 import asyncio
 import logging
 from typing import Optional
@@ -36,7 +37,7 @@ class AsyncAsciiClient:
             writer.close()
             await writer.wait_closed()
             return
-            
+
         peername = writer.get_extra_info('peername')
         logger.info(f"Inverter connected from {peername}")
         self._reader = reader
@@ -88,21 +89,21 @@ class AsyncAsciiClient:
         trans_id = self._transaction_id
         self._transaction_id = (self._transaction_id + 1) & 0xFFFF
         command_bytes = command.encode('ascii')
-        
+
         crc = crc16_xmodem(command_bytes)
         crc_high = adjust_crc_byte((crc >> 8) & 0xFF)
         crc_low = adjust_crc_byte(crc & 0xFF)
-        
+
         data = command_bytes + bytes([crc_high, crc_low, 0x0D])
         length = len(data) + 2
-        
+
         packet = bytearray([
             (trans_id >> 8) & 0xFF, trans_id & 0xFF,
             0x00, 0x01,
             (length >> 8) & 0xFF, length & 0xFF,
             0xFF, 0x04
         ]) + data
-        
+
         return bytes(packet)
 
     async def send_command(self, command: str) -> str:
@@ -114,20 +115,20 @@ class AsyncAsciiClient:
         async with self._cmd_lock:
             packet = self._build_command_packet(command)
             logger.debug(f"Sending command '{command}': {packet.hex()}")
-            
+
             try:
                 self._writer.write(packet)
                 await self._writer.drain()
 
                 header = await asyncio.wait_for(self._reader.readexactly(6), timeout=10)
                 length = int.from_bytes(header[4:6], 'big')
-                
+
                 response_data = await asyncio.wait_for(self._reader.readexactly(length), timeout=10)
-                
+
                 raw_data_bytes = response_data[2:-3]
                 parsed_response = raw_data_bytes.decode('ascii')
                 logger.debug(f"Parsed response for '{command}': {parsed_response}")
-                
+
                 return parsed_response
             except (asyncio.TimeoutError, ConnectionResetError, BrokenPipeError) as e:
                 logger.error(f"Connection error during send_command for '{command}': {e}")
@@ -143,12 +144,12 @@ class AsyncAsciiClient:
                     await self._writer.wait_closed()
                 except Exception:
                     pass
-            
+
             if self._server:
                 self._server.close()
                 await self._server.wait_closed()
                 self._server = None
-            
+
             self._connection_established.clear()
             self._reader = None
             self._writer = None

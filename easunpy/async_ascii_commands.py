@@ -1,6 +1,7 @@
-# easunpy/async_ascii_commands.py
+"""ASCII command handling for inverter communication."""
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from .models import OperatingMode
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ def parse_qpiri(raw: str) -> Dict[str, Any]:
         fields = raw.strip('(').split(' ')
         if len(fields) < 25:
             return {}
-        
+
         battery_type_map = {'0': "AGM", '1': "Flooded", '2': "User Defined", '3': "Pylontech"}
         priority_map = {'0': "Utility->Solar->Battery", '1': "Solar->Utility->Battery", '2': "Solar->Battery->Utility"}
         charger_priority_map = {'1': "Solar First", '2': "Solar and Utility", '3': "Solar Only"}
@@ -85,7 +86,7 @@ def parse_qpiws(raw: str) -> List[str]:
     try:
         bits = raw.strip('(')
         if len(bits) < 32: return ["Invalid response length"]
-        
+
         warning_map = {
             1: "Inverter fault", 2: "Bus over-voltage", 3: "Bus under-voltage",
             4: "Bus soft fail", 5: "Line fail", 6: "OPV short",

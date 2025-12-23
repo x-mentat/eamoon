@@ -1,8 +1,3 @@
-"""
-Minimal Flask app that serves the latest inverter reading from SQLite.
-Run modbus_service.py separately to collect data via AsyncISolar.
-"""
-
 """Flask web server for inverter status dashboard with real-time charts."""
 from __future__ import annotations
 

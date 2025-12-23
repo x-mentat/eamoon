@@ -33,7 +33,7 @@ class AsyncAsciiInverter:
             await asyncio.sleep(0.2)
             qpiws_res = await self.client.send_command("QPIWS")
             await asyncio.sleep(0.2)
-            
+
             qpgis2_res = None
             try:
                 qpgis2_res = await self.client.send_command("QPIGS2")
@@ -73,7 +73,7 @@ class AsyncAsciiInverter:
                 pv2_power=qpgis2_data.get('pv2_charging_power', 0),
                 pv_generated_today=0.0, pv_generated_total=0.0,
             )
-            
+
             grid = GridData(voltage=qpgis_data.get('grid_voltage', 0.0), power=0, frequency=int(qpgis_data.get('grid_frequency', 0.0) * 100))
             output = OutputData(
                 voltage=qpgis_data.get('output_voltage', 0.0), current=0.0,
@@ -83,7 +83,7 @@ class AsyncAsciiInverter:
                 frequency=int(qpgis_data.get('output_frequency', 0.0) * 100),
             )
             status = SystemStatus(operating_mode=op_mode, mode_name=op_mode.name if op_mode else "UNKNOWN", warnings=warnings, inverter_time=None)
-            
+
             # This was the point of failure. Ensure the dictionary is not empty before creating the object.
             rating = RatingData(**rating_data_dict) if rating_data_dict else None
 
@@ -93,7 +93,7 @@ class AsyncAsciiInverter:
             logger.error(f"Error getting all data for ASCII inverter: {e}", exc_info=True)
             await self.client.disconnect()
             return None, None, None, None, None, None
-            
+
     async def update_model(self, model: str):
         logger.debug("Model update called for ASCII inverter; no action needed.")
         pass
