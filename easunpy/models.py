@@ -116,8 +116,6 @@ class ModelConfig:
         return value * config.scale_factor
 
 # --- Model Definitions ---
-VOLTRONIC_ASCII = ModelConfig(name="VOLTRONIC_ASCII", protocol="ascii")
-
 ISOLAR_SMG_II_11K = ModelConfig(
     name="ISOLAR_SMG_II_11K",
     protocol="modbus",
@@ -244,7 +242,6 @@ ISOLAR_SMG_II_4K = ModelConfig(
 )
 
 MODEL_CONFIGS = {
-    "VOLTRONIC_ASCII": VOLTRONIC_ASCII,
     "ISOLAR_SMG_II_11K": ISOLAR_SMG_II_11K,
     "ISOLAR_SMG_II_6K": ISOLAR_SMG_II_6K,
     "ISOLAR_SMG_II_4K": ISOLAR_SMG_II_4K,
