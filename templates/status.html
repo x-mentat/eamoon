@@ -181,6 +181,7 @@
     .actions a { color: var(--accent); text-decoration: none; font-weight: 600; margin-right: 10px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
   <div class="card">
@@ -282,17 +283,162 @@
     let currentDays = null;
     const charts = {};
 
+    // Downsample data intelligently based on time period
+    function downsampleData(labels, ...datasets) {
+      if (labels.length === 0) return [labels, ...datasets];
+      
+      // Determine bucket size based on data point count
+      const count = labels.length;
+      let bucketMinutes;
+      if (!currentDays || currentDays <= 1) {
+        bucketMinutes = 5; // 5-minute buckets for 1 day
+      } else if (currentDays <= 7) {
+        bucketMinutes = 15; // 15-minute buckets for 7 days
+      } else {
+        bucketMinutes = 60; // 1-hour buckets for 30+ days
+      }
+
+      const downsampled = [];
+      const result = datasets.map(() => []);
+      let lastBucket = null;
+
+      for (let i = 0; i < labels.length; i++) {
+        const ts = labels[i];
+        let bucket;
+        try {
+          const d = new Date(ts);
+          const minutes = Math.floor(d.getMinutes() / bucketMinutes) * bucketMinutes;
+          bucket = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), minutes).toISOString();
+        } catch {
+          bucket = `${i}`;
+        }
+        
+        const isLast = i === labels.length - 1;
+        if (bucket !== lastBucket || isLast) {
+          downsampled.push(ts);
+          datasets.forEach((dataset, idx) => {
+            result[idx].push(dataset[i]);
+          });
+          lastBucket = bucket;
+        }
+      }
+      
+      return [downsampled, ...result];
+    }
+
+    // Create common chart options
+    function getChartOptions(yAxisLabel, unit) {
+      const days = currentDays || 1;
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: days > 7 ? 'day' : days > 1 ? 'hour' : 'hour',
+              displayFormats: {
+                hour: days > 1 ? 'MMM d HH:mm' : 'HH:mm',
+                day: 'MMM d'
+              },
+              tooltipFormat: 'MMM d, yyyy HH:mm'
+            },
+            ticks: {
+              color: '#c6d2f2',
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: days > 7 ? 8 : days > 1 ? 12 : 12
+            },
+            grid: {
+              color: 'rgba(36, 53, 92, 0.5)',
+              drawBorder: false
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: yAxisLabel,
+              color: '#c6d2f2',
+              font: { size: 12, weight: 600 }
+            },
+            ticks: {
+              color: '#c6d2f2',
+              callback: function(value) {
+                return value.toFixed(1) + (unit || '');
+              }
+            },
+            grid: {
+              color: 'rgba(36, 53, 92, 0.5)',
+              drawBorder: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: '#f6f8ff',
+              font: { size: 13, weight: 600 },
+              padding: 12,
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(19, 31, 58, 0.95)',
+            titleColor: '#f6f8ff',
+            bodyColor: '#c6d2f2',
+            borderColor: '#24355c',
+            borderWidth: 1,
+            padding: 12,
+            displayColors: true,
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                if (label) label += ': ';
+                if (context.parsed.y !== null) {
+                  label += context.parsed.y.toFixed(2) + (unit || '');
+                }
+                return label;
+              }
+            }
+          }
+        }
+      };
+    }
+
+    // Create dataset config with better styling
+    function createDataset(label, data, borderColor) {
+      return {
+        label: label,
+        data: data,
+        borderColor: borderColor,
+        backgroundColor: borderColor + '20',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: borderColor,
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.3,
+        spanGaps: true,
+        fill: false
+      };
+    }
+
     async function loadHistory() {
       try {
         const url = currentDays ? `/history?days=${currentDays}` : '/history';
         const rows = await (await fetch(url)).json();
         const labels = [];
-        const gridV = [];
-        const gridP = [];
-        const gridA = [];
-        const battV = [];
-        const battA = [];
-        const loadP = [];
+        const gridV = [], gridP = [], gridA = [];
+        const battV = [], battA = [], loadP = [];
 
         rows.reverse().forEach(r => {
           labels.push(r.created_at || '');
@@ -304,106 +450,91 @@
           battA.push(p.battery_current === undefined ? null : Number(p.battery_current));
           loadP.push(p.ac_output_power === undefined ? null : Number(p.ac_output_power));
         });
-        // Downsample: first point per 5-minute bucket and the last overall.
-        const stepLabels = [];
-        const stepGridV = [];
-        const stepGridP = [];
-        const stepGridA = [];
-        const stepBattV = [];
-        const stepBattA = [];
-        const stepLoadP = [];
-        let lastBucket = null;
-        for (let i = 0; i < labels.length; i++) {
-          const ts = labels[i];
-          const bucket = ts && ts.length >= 16 ? ts.slice(0, 15) + (Math.floor(parseInt(ts.slice(14, 16), 10) / 5) * 5).toString().padStart(2, '0') : `${i}`;
-          const isLast = i === labels.length - 1;
-          if (bucket !== lastBucket || isLast) {
-            stepLabels.push(ts);
-            stepGridV.push(gridV[i]);
-            stepGridP.push(gridP[i]);
-            stepGridA.push(gridA[i]);
-            stepBattV.push(battV[i]);
-            stepBattA.push(battA[i]);
-            stepLoadP.push(loadP[i]);
-            lastBucket = bucket;
-          }
-        }
 
+        // Downsample data for better performance and readability
+        const [stepLabels, stepGridV, stepGridP, stepGridA, stepBattV, stepBattA, stepLoadP] = 
+          downsampleData(labels, gridV, gridP, gridA, battV, battA, loadP);
+
+        // Grid Voltage Chart
         if (charts.gridV) charts.gridV.destroy();
         charts.gridV = new Chart(ctxGridV, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Grid V', data:stepGridV, borderColor:'#7db0ff', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Volts'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Grid Voltage', stepGridV, '#4a9eff')]
+          },
+          options: getChartOptions('Grid Voltage', ' V')
         });
 
+        // Grid Power Chart
         if (charts.gridP) charts.gridP.destroy();
         charts.gridP = new Chart(ctxGridP, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Grid W', data:stepGridP, borderColor:'#ffd479', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Watts'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Grid Power', stepGridP, '#ffb84d')]
+          },
+          options: getChartOptions('Grid Power', ' W')
         });
 
+        // Grid Current Chart
         if (charts.gridA) charts.gridA.destroy();
         charts.gridA = new Chart(ctxGridA, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Grid A', data:stepGridA, borderColor:'#f3c2c2', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Amps'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Grid Current', stepGridA, '#ff6b6b')]
+          },
+          options: getChartOptions('Grid Current', ' A')
         });
 
+        // Load Power Chart
         if (charts.loadP) charts.loadP.destroy();
         charts.loadP = new Chart(ctxLoadP, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Load W', data:stepLoadP, borderColor:'#9b8cff', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Watts'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Load Power', stepLoadP, '#a78bfa')]
+          },
+          options: getChartOptions('Load Power', ' W')
         });
 
+        // Battery Voltage Chart
         if (charts.battV) charts.battV.destroy();
         charts.battV = new Chart(ctxBattV, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Battery V', data:stepBattV, borderColor:'#b6f5c6', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Volts'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Battery Voltage', stepBattV, '#7cd14f')]
+          },
+          options: getChartOptions('Battery Voltage', ' V')
         });
 
+        // Battery Current Chart
         if (charts.battA) charts.battA.destroy();
         charts.battA = new Chart(ctxBattA, {
           type: 'line',
-          data: { labels: stepLabels, datasets: [{label:'Battery A', data:stepBattA, borderColor:'#7cd14f', tension:0.25, spanGaps:true}] },
-          options: {
-            responsive: true,
-            scales: { y: {title:{display:true,text:'Amps'}} },
-            plugins: {legend:{labels:{color:'#e5ecff'}}, tooltip:{mode:'index', intersect:false}}
-          }
+          data: { 
+            labels: stepLabels, 
+            datasets: [createDataset('Battery Current', stepBattA, '#34d399')]
+          },
+          options: getChartOptions('Battery Current', ' A')
         });
+
       } catch (e) {
         console.error('History load failed', e);
       }
     }
+
     periodButtons.forEach(btn => {
       btn.addEventListener('click', () => {
+        periodButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         currentDays = btn.getAttribute('data-days');
         loadHistory();
       });
     });
+    
     loadHistory();
     setInterval(() => window.location.reload(), 60000);
   </script>
