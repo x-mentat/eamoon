@@ -1,6 +1,16 @@
 # Easun Inverter Monitor
 
-Flask UI + background Modbus poller + optional Telegram alerts for grid outage/restore. The poller stores readings in SQLite; the UI reads the latest entry and charts history.
+Flask UI + background Modbus poller + optional Telegram bot alerts, with Tuya smart plug integration. The poller stores readings in SQLite; the UI reads the latest entry and charts history.
+
+## Features
+- Web dashboard with real-time status and historical charts (downsampling by period).
+- Background Modbus poller (no inverter load from the UI).
+- Telegram bot: `/status`, `/battery`, and automatic alerts on grid loss/restore.
+- Tuya Cloud integration (user account mode):
+	- Show device ON/OFF state in `/status` bot message.
+	- Optional auto-turn-off all Tuya devices when grid power is lost.
+	- Optional auto-turn-on all Tuya devices when grid returns.
+	- One-token-per-action (token is fetched on demand).
 
 ## Install: Docker
 1) Copy `.env.example` to `.env` and fill in IP/model/Telegram if used.
@@ -44,3 +54,34 @@ Units assume `/opt/eamoon` and `/opt/eamoon/.venv/bin/python`; adjust paths if d
 - Data is cached in `DB_PATH` (default `inverter.db`); the UI does not hit the inverter.
 - Register map/model selection lives in `easunpy/models.py` (`ISOLAR_SMG_II_4K` etc.).
 - Charts downsample to ~5-minute buckets to avoid clutter.
+
+## Configuration (.env)
+Copy `.env.example` to `.env` and fill as needed.
+
+Core:
+- `MODBUS_HOST`, `MODBUS_PORT`, `MODBUS_UNIT_ID`
+- `INVERTER_MODEL` (e.g. `ISOLAR_SMG_II_4K`)
+- `LOCAL_IP` (optional, helps device discovery)
+- `DB_PATH` (SQLite path), `POLL_INTERVAL`
+
+Telegram (optional):
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `BOT_POLL_INTERVAL`
+
+Tuya Cloud (optional):
+- `TUYA_ACCESS_ID`, `TUYA_ACCESS_SECRET`, `TUYA_USER_ID`
+- `TUYA_ENDPOINT` (e.g. `https://openapi.tuyaeu.com`), `TUYA_APP_SCHEMA`
+- `TUYA_TURN_OFF_ON_POWER_LOSS` (true/false): turn OFF all devices on grid loss
+- `TUYA_TURN_ON_ON_GRID_BACK` (true/false): turn ON all devices on grid restore
+
+Notes on Tuya:
+- Devices are listed via user-mode endpoint (`/v1.0/users/{USER_ID}/devices`).
+- Commands use `switch_1: True|False` for basic on/off smart plugs.
+- If a device is offline, the API returns an error; the bot reports and continues.
+
+## Bot quick commands
+- `/status` – overall status (grid, key metrics) + Tuya device states (if configured)
+- `/battery` – battery-only focus (SOC, voltage, current) with low-SOC tips
+
+Alerts:
+- Grid loss → alert + optional Tuya auto-off
+- Grid restore → alert + optional Tuya auto-on
