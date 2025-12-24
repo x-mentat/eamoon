@@ -25,6 +25,7 @@ DB_PATH = os.getenv("DB_PATH", "inverter.db")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # optional, куди слати алерти
 POLL_INTERVAL = int(os.getenv("BOT_POLL_INTERVAL", "10"))
 TUYA_TURN_OFF_ON_POWER_LOSS = os.getenv("TUYA_TURN_OFF_ON_POWER_LOSS", "false").lower() in ("true", "1", "yes")
+TUYA_TURN_ON_ON_GRID_BACK = os.getenv("TUYA_TURN_ON_ON_GRID_BACK", "false").lower() in ("true", "1", "yes")
 
 if BOT_TOKEN:
     API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
@@ -173,6 +174,30 @@ def turn_off_tuya_devices(token: str) -> str:
         return "\n".join(lines) if len(lines) > 1 else ""
     except Exception as exc:
         print(f"Failed to turn off devices: {exc}")
+        return ""
+
+def turn_on_tuya_devices(token: str) -> str:
+    """Turn on all Tuya devices and return status message."""
+    if not TUYA_AVAILABLE or not token:
+        return ""
+    try:
+        devices = tuya.list_devices(token)
+        if not devices:
+            return ""
+        lines = ["\n🔌 Вмикаю Tuya устройства:"]
+        for dev in devices:
+            dev_id = dev.get("id")
+            name = dev.get("name", dev_id)
+            if not dev_id:
+                continue
+            try:
+                tuya.send_device_command(token, dev_id, [{"code": "switch_1", "value": True}])
+                lines.append(f"  ✓ {name} увімкнено")
+            except Exception as exc:
+                lines.append(f"  ✗ {name} - помилка: {exc}")
+        return "\n".join(lines) if len(lines) > 1 else ""
+    except Exception as exc:
+        print(f"Failed to turn on devices: {exc}")
         return ""
 
 
@@ -447,6 +472,11 @@ def main() -> int:
                     if grid_up:
                         header = "✅ Мережу відновлено"
                         tuya_action = ""
+                        # Turn on Tuya devices if configured
+                        if TUYA_TURN_ON_ON_GRID_BACK and TUYA_AVAILABLE:
+                            tuya_token = get_tuya_token()
+                            if tuya_token:
+                                tuya_action = turn_on_tuya_devices(tuya_token)
                     else:
                         header = (
                             "⚠️ Мережа зникла!\n"
