@@ -267,12 +267,42 @@
         </div>
       </div>
       <div class="chart-grid" style="margin-top:6px;">
-        <div class="chart-cell"><canvas id="chartGridV" aria-label="Grid Voltage chart"></canvas></div>
-        <div class="chart-cell"><canvas id="chartGridP" aria-label="Grid Power chart"></canvas></div>
-        <div class="chart-cell"><canvas id="chartGridA" aria-label="Grid Current chart"></canvas></div>
-        <div class="chart-cell"><canvas id="chartBattV" aria-label="Battery Voltage chart"></canvas></div>
-        <div class="chart-cell"><canvas id="chartBattA" aria-label="Battery Current chart"></canvas></div>
-        <div class="chart-cell"><canvas id="chartLoadP" aria-label="Load Power chart"></canvas></div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-lightning-charge"></i> Grid Voltage
+          </div>
+          <canvas id="chartGridV" aria-label="Grid Voltage chart"></canvas>
+        </div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-speedometer"></i> Grid Power
+          </div>
+          <canvas id="chartGridP" aria-label="Grid Power chart"></canvas>
+        </div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-activity"></i> Grid Current
+          </div>
+          <canvas id="chartGridA" aria-label="Grid Current chart"></canvas>
+        </div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-battery-charging"></i> Battery Voltage
+          </div>
+          <canvas id="chartBattV" aria-label="Battery Voltage chart"></canvas>
+        </div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-graph-up-arrow"></i> Battery Current
+          </div>
+          <canvas id="chartBattA" aria-label="Battery Current chart"></canvas>
+        </div>
+        <div class="chart-cell">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:600;">
+            <i class="bi bi-plug"></i> Load Power
+          </div>
+          <canvas id="chartLoadP" aria-label="Load Power chart"></canvas>
+        </div>
       </div>
     {% endif %}
 
