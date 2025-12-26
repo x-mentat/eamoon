@@ -251,6 +251,14 @@
         </div>
       </div>
 
+      <!-- Tuya Devices Status -->
+      <div id="tuyaDevicesSection" style="margin-top:18px; display:none;">
+        <div style="font-weight:700;color:var(--muted);margin-bottom:8px;">📱 Smart Devices</div>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+          <div id="tuyaDevicesList"></div>
+        </div>
+      </div>
+
       <div style="margin-top:18px; display:flex; align-items:center; gap:10px;">
         <span style="font-weight:700;color:var(--muted);">History</span>
         <a href="/" class="btn btn-sm btn-outline-success" style="padding:6px 12px; border-radius:8px;">Refresh</a>
@@ -558,6 +566,46 @@
     
     updateBatteryColor();
     setInterval(updateBatteryColor, 5000);
+    
+    // Fetch and display Tuya devices
+    async function loadTuyaDevices() {
+      try {
+        const resp = await fetch('/tuya_devices');
+        const data = await resp.json();
+        
+        if (data.error || !Array.isArray(data) || data.length === 0) {
+          document.getElementById('tuyaDevicesSection').style.display = 'none';
+          return;
+        }
+        
+        const section = document.getElementById('tuyaDevicesSection');
+        const list = document.getElementById('tuyaDevicesList');
+        
+        list.innerHTML = data.map(dev => {
+          const statusIcon = dev.switch_on ? '✅' : '❌';
+          const statusText = dev.switch_on ? 'ON' : 'OFF';
+          const statusColor = dev.switch_on ? '#7cd14f' : '#ff5050';
+          const onlineText = dev.online ? '' : ' (offline)';
+          
+          return `
+            <div class="item" style="display:flex; flex-direction:column; gap:4px;">
+              <div class="label">${dev.name}${onlineText}</div>
+              <div class="value" style="color:${statusColor}; font-size:16px;">
+                ${statusIcon} ${statusText}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        section.style.display = 'block';
+      } catch (e) {
+        console.error('Failed to load Tuya devices', e);
+        document.getElementById('tuyaDevicesSection').style.display = 'none';
+      }
+    }
+    
+    loadTuyaDevices();
+    setInterval(loadTuyaDevices, 10000);
     
     loadHistory();
     setInterval(() => window.location.reload(), 60000);
