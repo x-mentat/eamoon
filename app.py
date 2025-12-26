@@ -61,5 +61,38 @@ def history():
     return jsonify(readings)
 
 
+@app.route("/tuya_devices")
+def tuya_devices():
+    """Return Tuya device statuses."""
+    try:
+        import tuya
+        token = tuya.get_token()
+        if not token:
+            return jsonify({"error": "Failed to get Tuya token"})
+        devices = tuya.list_devices(token)
+        result = []
+        for dev in devices:
+            dev_id = dev.get("id")
+            name = dev.get("name", dev_id)
+            if not dev_id:
+                continue
+            try:
+                status = tuya.get_device_status(token, dev_id)
+                status_items = status if isinstance(status, list) else status.get("status", [])
+                switch_on = False
+                for item in status_items:
+                    if item.get("code") == "switch_1":
+                        switch_on = item.get("value", False)
+                        break
+                result.append({"id": dev_id, "name": name, "online": True, "switch_on": switch_on})
+            except Exception:
+                result.append({"id": dev_id, "name": name, "online": False, "switch_on": False})
+        return jsonify(result)
+    except ImportError:
+        return jsonify({"error": "Tuya not available"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
