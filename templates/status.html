@@ -220,27 +220,27 @@
             <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
               <div class="d-flex align-items-center justify-content-center gap-3">
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-lightning-charge-fill" style="font-size:38px; color:#7cd14f;"></i>
+                  <img src="/static/img/grid_power.png" style="width:38px; height:38px;" alt="Grid">
                   <div class="label" style="font-size:14px;">Grid</div>
                   <div class="label" style="font-size:15px;">{{ data.grid_voltage }} V</div>
                 </div>
-                <i class="bi bi-arrow-right-circle" style="font-size:34px; color:#5fae3f;"></i>
+                <img src="/static/img/arrow_right.png" style="width:34px; height:34px;" alt="Arrow">
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-hdd-network" style="font-size:40px; color:#5fae3f;"></i>
+                  <img src="/static/img/invertor.png" style="width:40px; height:40px;" alt="Inverter">
                   <div class="label" style="font-size:14px;">Inverter</div>
                   <div class="label" style="font-size:15px;">{{ data.status_text }}</div>
                 </div>
-                <i class="bi bi-arrow-right-circle" style="font-size:34px; color:#5fae3f;"></i>
+                <img src="/static/img/arrow_right.png" style="width:34px; height:34px;" alt="Arrow">
                 <div class="d-flex flex-column align-items-center">
-                  <i class="bi bi-house-fill" style="font-size:40px; color:#7cd14f;"></i>
+                  <img src="/static/img/house.png" style="width:40px; height:40px;" alt="Load">
                   <div class="label" style="font-size:14px;">Load</div>
                   <div class="label" style="font-size:15px;">{{ data.ac_output_power }} W</div>
                 </div>
           </div>
                 <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
                   <div class="d-flex flex-column align-items-center">
-                    <i class="bi {% if use_grid %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %}" style="font-size:30px; color:#5fae3f;"></i>
-                    <i class="bi bi-battery-full" id="batteryIcon" style="font-size:46px; color:#5fae3f; margin-top:4px;"></i>
+                    <img src="/static/img/arrow_{% if use_grid %}down{% else %}up{% endif %}.png" style="width:30px; height:30px;" alt="Arrow">
+                    <img id="batteryIcon" src="/static/img/battery_full.svg" style="width:46px; height:46px; margin-top:4px;" alt="Battery">
                     <div class="label" style="font-size:14px;">Battery</div>
                     <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
                     <div class="label" style="font-size:15px;">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
@@ -573,7 +573,7 @@
       });
     });
     
-    // Update battery icon color based on SOC
+    // Update battery icon based on SOC
     function updateBatteryColor() {
       const socText = document.querySelector('[data-days="1"]')?.closest('.card')?.querySelector('[style*="Battery SOC"]')?.parentElement?.textContent || '';
       const socMatch = document.body.textContent.match(/Battery SOC.*?(\d+)/);
@@ -582,13 +582,13 @@
         const icon = document.getElementById('batteryIcon');
         if (icon) {
           if (soc >= 80) {
-            icon.style.color = '#7cd14f';  // Green
+            icon.src = '/static/img/battery_full.svg';
           } else if (soc >= 50) {
-            icon.style.color = '#fbbf24';  // Yellow/Amber
+            icon.src = '/static/img/battery_75.svg';
           } else if (soc >= 20) {
-            icon.style.color = '#f97316';  // Orange
+            icon.src = '/static/img/battery_50.svg';
           } else {
-            icon.style.color = '#ef4444';  // Red
+            icon.src = '/static/img/battery_low.svg';
           }
         }
       }
