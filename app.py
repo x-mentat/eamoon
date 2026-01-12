@@ -13,6 +13,7 @@ from data_store import (
     get_recent_readings,
     init_db,
 )
+from device_service import DeviceService
 
 app = Flask(__name__)
 
@@ -26,6 +27,9 @@ INVERTER_MODEL = os.getenv("INVERTER_MODEL", "ISOLAR_SMG_II_11K")
 
 # Ensure the DB exists so the UI can show helpful messaging even before data arrives.
 init_db(DB_PATH)
+
+# Initialize device service for querying device data (jk_bms_service.py handles updates)
+device_service = DeviceService(DB_PATH)
 
 
 @app.route("/")
@@ -90,6 +94,32 @@ def tuya_devices():
         return jsonify(result)
     except ImportError:
         return jsonify({"error": "Tuya not available"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+@app.route("/battery_devices")
+def battery_devices():
+    """Return battery device statuses (JK BMS, etc.)."""
+    try:
+        devices = device_service.load_devices()
+        result = []
+        for device in devices:
+            address = device.get("address")
+            status = device_service.get_device_status(address)
+            
+            result.append({
+                "address": address,
+                "name": device.get("name", "Unknown"),
+                "type": device.get("device_type", "jk_bms"),
+                "voltage": status.get("voltage") if status else None,
+                "current": status.get("current") if status else None,
+                "temperature": status.get("temperature") if status else None,
+                "cell_count": status.get("cell_count") if status else 0,
+                "soc": status.get("soc") if status else None,
+                "cells": status.get("cells", []) if status else [],
+            })
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)})
 

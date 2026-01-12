@@ -15,6 +15,28 @@ CREATE TABLE IF NOT EXISTS readings (
     payload TEXT,
     error TEXT
 );
+
+CREATE TABLE IF NOT EXISTS device_readings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_address TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    voltage REAL,
+    current REAL,
+    temperature REAL,
+    cell_count INTEGER,
+    cell_data TEXT,
+    soc REAL,
+    FOREIGN KEY (device_address) REFERENCES devices(address)
+);
+
+CREATE TABLE IF NOT EXISTS devices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT UNIQUE NOT NULL,
+    name TEXT,
+    device_type TEXT DEFAULT 'jk_bms',
+    last_seen TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
