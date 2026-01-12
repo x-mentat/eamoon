@@ -258,7 +258,7 @@
           </div>
                 <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
                   <div class="d-flex flex-column align-items-center">
-                    <img src="/static/img/arrow_{% if batt_current_val < 0 %}down{% else %}up{% endif %}.png" style="width:60px; height:60px;" alt="Arrow">
+                    <img src="/static/img/arrow_{% if batt_current_val < 0 %}up{% else %}down{% endif %}.png" style="width:60px; height:60px;" alt="Arrow">
                     <img id="batteryIcon" src="/static/img/battery_full.svg" style="width:92px; height:92px; margin-top:4px;" alt="Battery">
                     <div class="label" style="font-size:14px;">Battery</div>
                     <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
