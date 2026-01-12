@@ -283,6 +283,14 @@
               </div>
             </div>
 
+            <!-- Battery Devices Status -->
+            <div id="batteryDevicesSection" style="display:none; margin-top:12px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;color:var(--muted);font-size:13px;font-weight:600;">
+                <i class="bi bi-battery-charging"></i> Battery Devices
+              </div>
+              <div id="batteryDevicesList" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px;"></div>
+            </div>
+
             <!-- Detailed Metrics Cards -->
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
               
@@ -767,6 +775,7 @@
     loadTuyaDevices();
     setInterval(loadTuyaDevices, 10000);
     
+<<<<<<< HEAD
     // Load electricity schedule
     async function loadElectricitySchedule() {
       try {
@@ -964,6 +973,73 @@
     
     // Load initial data
     currentDays = '1';
+=======
+    // Fetch and display battery devices
+    async function loadBatteryDevices() {
+      try {
+        const resp = await fetch('/battery_devices');
+        const data = await resp.json();
+        
+        if (data.error || !Array.isArray(data) || data.length === 0) {
+          document.getElementById('batteryDevicesSection').style.display = 'none';
+          return;
+        }
+        
+        const section = document.getElementById('batteryDevicesSection');
+        const list = document.getElementById('batteryDevicesList');
+        
+        list.innerHTML = data.map(dev => {
+          const voltage = dev.voltage !== null ? dev.voltage.toFixed(2) + 'V' : 'N/A';
+          const current = dev.current !== null ? dev.current.toFixed(2) + 'A' : 'N/A';
+          const temp = dev.temperature !== null ? dev.temperature.toFixed(1) + '°C' : 'N/A';
+          const cellCount = dev.cell_count || 0;
+          
+          // Determine health status based on voltage and temperature
+          let statusColor = '#7cd14f'; // green
+          let statusIcon = '<i class="bi bi-heart-fill" style="color:#7cd14f;"></i>';
+          
+          if (dev.voltage !== null) {
+            if (dev.voltage < 3.0 || dev.voltage > 4.3) {
+              statusColor = '#ffcec2'; // red/warn
+              statusIcon = '<i class="bi bi-exclamation-triangle-fill" style="color:#ffcec2;"></i>';
+            } else if (dev.voltage < 3.2 || dev.voltage > 4.2) {
+              statusColor = '#ffb84d'; // orange/caution
+              statusIcon = '<i class="bi bi-info-circle-fill" style="color:#ffb84d;"></i>';
+            }
+          }
+          
+          const bgColor = `${statusColor}15`;
+          const borderColor = `${statusColor}40`;
+          
+          return `
+            <div class="item" style="padding:12px;background:${bgColor};border-color:${borderColor};transition:all 0.3s ease;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div class="label" style="margin:0;font-size:12px;">
+                  ${dev.name}
+                </div>
+                ${statusIcon}
+              </div>
+              <div style="font-size:13px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div><span style="font-weight:600;">V:</span> ${voltage}</div>
+                <div><span style="font-weight:600;">A:</span> ${current}</div>
+                <div><span style="font-weight:600;">T:</span> ${temp}</div>
+                <div><span style="font-weight:600;">Cells:</span> ${cellCount}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        section.style.display = 'block';
+      } catch (e) {
+        console.error('Failed to load battery devices', e);
+        document.getElementById('batteryDevicesSection').style.display = 'none';
+      }
+    }
+    
+    loadBatteryDevices();
+    setInterval(loadBatteryDevices, 15000);
+    
+>>>>>>> e88615c (feat: add JK BMS battery device monitoring service)
     loadHistory();
     loadElectricitySchedule();
     

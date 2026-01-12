@@ -1,0 +1,16 @@
+[Unit]
+Description=JK BMS Battery Device Scanner Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/eamoon
+EnvironmentFile=/opt/eamoon/.env
+ExecStart=/opt/eamoon/.venv/bin/python /opt/eamoon/jk_bms_service.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
