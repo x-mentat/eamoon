@@ -222,19 +222,21 @@
         </div>
           <div style="display:flex; flex-direction:column; gap:14px;">
           <div class="flow" aria-label="Energy flow diagram" style="text-align:center;">
-            {% set grid_power_val = data.grid_power|replace('N/A','0')|float %}
-            {% set grid_voltage_val = data.grid_voltage|replace('N/A','0')|float %}
+            {% set grid_power_val = (data.grid_power ~ '')|replace('N/A','0')|replace(' W','')|float %}
+            {% set grid_voltage_val = (data.grid_voltage ~ '')|replace('N/A','0')|replace(' V','')|float %}
             {% set batt_current_val = data.battery_current|replace('N/A','0')|float %}
             {% set ac_power_val = data.ac_output_power|replace('N/A','0')|float %}
             {% set use_grid = grid_power_val > 0.1 %}
-            {% set grid_disconnected = grid_power_val == 0 or grid_voltage_val == 0 %}
+            {% set grid_disconnected = grid_power_val <= 0.1 or grid_voltage_val <= 1 %}
             <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
               <div class="d-flex align-items-center justify-content-center gap-3">
                 <div class="d-flex flex-column align-items-center">
-                  {% if grid_disconnected %}
-                    <i class="bi bi-power-off" style="font-size:76px; color:#ffb84d; position:absolute; z-index:10;"></i>
-                  {% endif %}
-                  <img src="/static/img/grid_power.png" style="width:76px; height:76px;" alt="Grid">
+                  <div style="position:relative;width:76px;height:76px;">
+                    <img src="/static/img/grid_power.png" style="width:76px; height:76px;" alt="Grid">
+                    {% if grid_disconnected %}
+                      <i class="bi bi-power-off" style="font-size:48px; color:#ffb84d; position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));"></i>
+                    {% endif %}
+                  </div>
                   <div class="label" style="font-size:14px;">Grid</div>
                   <div class="label" style="font-size:15px;">{{ data.grid_voltage }} V</div>
                 </div>
