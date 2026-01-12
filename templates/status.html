@@ -222,12 +222,15 @@
         </div>
           <div style="display:flex; flex-direction:column; gap:14px;">
           <div class="flow" aria-label="Energy flow diagram" style="text-align:center;">
-            {% set grid_power_val = (data.grid_power ~ '')|replace('N/A','0')|replace(' W','')|float %}
-            {% set grid_voltage_val = (data.grid_voltage ~ '')|replace('N/A','0')|replace(' V','')|float %}
-            {% set batt_current_val = data.battery_current|replace('N/A','0')|float %}
+            {% set grid_power_str = (data.grid_power | string)|replace('N/A','0')|replace(' W','')|replace('W','')|trim %}
+            {% set grid_voltage_str = (data.grid_voltage | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim %}
+            {% set grid_power_val = grid_power_str|float %}
+            {% set grid_voltage_val = grid_voltage_str|float %}
+            {% set batt_current_str = (data.battery_current | string)|replace('N/A','0')|replace(' A','')|replace('A','')|trim %}
+            {% set batt_current_val = batt_current_str|float %}
             {% set ac_power_val = data.ac_output_power|replace('N/A','0')|float %}
             {% set use_grid = grid_power_val > 0.1 %}
-            {% set grid_disconnected = grid_power_val <= 0.1 or grid_voltage_val <= 1 %}
+            {% set grid_disconnected = (grid_power_val <= 0.1) or (grid_voltage_val <= 1.0) %}
             <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
               <div class="d-flex align-items-center justify-content-center gap-3">
                 <div class="d-flex flex-column align-items-center">
@@ -255,7 +258,6 @@
           </div>
                 <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
                   <div class="d-flex flex-column align-items-center">
-                    {% set batt_current_val = data.battery_current|replace('N/A','0')|float %}
                     <img src="/static/img/arrow_{% if batt_current_val < 0 %}down{% else %}up{% endif %}.png" style="width:60px; height:60px;" alt="Arrow">
                     <img id="batteryIcon" src="/static/img/battery_full.svg" style="width:92px; height:92px; margin-top:4px;" alt="Battery">
                     <div class="label" style="font-size:14px;">Battery</div>
