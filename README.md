@@ -4,6 +4,7 @@ Flask UI + background Modbus poller + optional Telegram bot alerts, with Tuya sm
 
 ## Features
 - Web dashboard with real-time status and historical charts (downsampling by period).
+- Electricity schedule viewer showing planned outages from be-svitlo.oe.if.ua.
 - Background Modbus poller (no inverter load from the UI).
 - Telegram bot: `/status`, `/battery`, and automatic alerts on grid loss/restore.
 - Tuya Cloud integration (user account mode):
@@ -73,14 +74,18 @@ Tuya Cloud (optional):
 - `TUYA_TURN_OFF_ON_POWER_LOSS` (true/false): turn OFF all devices on grid loss
 - `TUYA_TURN_ON_ON_GRID_BACK` (true/false): turn ON all devices on grid restore
 
+Electricity Schedule (optional):
+- `QUEUE_NUMBER` (e.g. `5.2`): Your electricity queue number for be-svitlo.oe.if.ua API
+
 Notes on Tuya:
 - Devices are listed via user-mode endpoint (`/v1.0/users/{USER_ID}/devices`).
 - Commands use `switch_1: True|False` for basic on/off smart plugs.
 - If a device is offline, the API returns an error; the bot reports and continues.
 
 ## Bot quick commands
-- `/status` – overall status (grid, key metrics) + Tuya device states (if configured)
+- `/status` – overall status (grid, key metrics) + Tuya device states (if configured) + today's electricity schedule
 - `/battery` – battery-only focus (SOC, voltage, current) with low-SOC tips
+- `/schedule` – detailed electricity schedule for queue (up to 3 days)
 
 Alerts:
 - Grid loss → alert + optional Tuya auto-off

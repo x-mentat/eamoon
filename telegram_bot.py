@@ -26,6 +26,7 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # optional, куди слати але�
 POLL_INTERVAL = int(os.getenv("BOT_POLL_INTERVAL", "10"))
 TUYA_TURN_OFF_ON_POWER_LOSS = os.getenv("TUYA_TURN_OFF_ON_POWER_LOSS", "false").lower() in ("true", "1", "yes")
 TUYA_TURN_ON_ON_GRID_BACK = os.getenv("TUYA_TURN_ON_ON_GRID_BACK", "false").lower() in ("true", "1", "yes")
+QUEUE_NUMBER = os.getenv("QUEUE_NUMBER", "5.2")
 
 if BOT_TOKEN:
     API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
@@ -223,6 +224,62 @@ def battery_emoji(soc: float) -> str:
     return "🔋🔴"
 
 
+def get_electricity_schedule() -> str:
+    """Fetch and format electricity schedule from be-svitlo API."""
+    try:
+        url = f"https://be-svitlo.oe.if.ua/schedule-by-queue?queue={QUEUE_NUMBER}"
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+        req.add_header('Accept', 'application/json, text/plain, */*')
+        
+        with urllib.request.urlopen(req, timeout=10, context=UNVERIFIED_CTX) as response:
+            data = json.loads(response.read().decode('utf-8'))
+        
+        if not data or len(data) == 0:
+            return ""
+        
+        # Get today's schedule
+        today = data[0]
+        event_date = today.get('eventDate', '')
+        queues = today.get('queues', {}).get(QUEUE_NUMBER, [])
+        
+        if len(queues) == 0:
+            return f"\n\n📅 Графік відключень ({event_date}):\n✅ Відключень не заплановано"
+        
+        parts = [f"\n📅 Графік відключень ({event_date}):"]
+        
+        # Check current time to mark active outages
+        from datetime import datetime
+        now = datetime.now()
+        
+        for slot in queues:
+            shutdown_hours = slot.get('shutdownHours', '')
+            from_time = slot.get('from', '')
+            to_time = slot.get('to', '')
+            
+            # Check if outage is active now
+            try:
+                from_hour, from_min = map(int, from_time.split(':'))
+                to_hour, to_min = map(int, to_time.split(':'))
+                from_dt = datetime(now.year, now.month, now.day, from_hour, from_min)
+                to_dt = datetime(now.year, now.month, now.day, to_hour, to_min)
+                
+                if from_dt <= now <= to_dt:
+                    parts.append(f"🔴 {shutdown_hours} (ЗАРАЗ)")
+                elif now < from_dt:
+                    parts.append(f"⏰ {shutdown_hours}")
+                else:
+                    parts.append(f"  {shutdown_hours}")
+            except:
+                parts.append(f"  {shutdown_hours}")
+        
+        return "\n".join(parts)
+    
+    except Exception as e:
+        print(f"Failed to fetch electricity schedule: {e}")
+        return ""
+
+
 def build_status_text() -> str:
     """Текст для /status — мережа + споживання + батарея."""
     payload, error, ts = get_latest_reading(DB_PATH)
@@ -294,6 +351,11 @@ def build_status_text() -> str:
             if tuya_status:
                 parts.append(tuya_status)
 
+    # Electricity schedule
+    schedule_text = get_electricity_schedule()
+    if schedule_text:
+        parts.append(schedule_text)
+
     return "\n".join(parts)
 
 
@@ -341,6 +403,75 @@ def build_battery_text() -> str:
         )
 
     return "\n".join(parts)
+
+
+def build_schedule_text() -> str:
+    """Текст для /schedule — детальний графік відключень."""
+    try:
+        url = f"https://be-svitlo.oe.if.ua/schedule-by-queue?queue={QUEUE_NUMBER}"
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+        req.add_header('Accept', 'application/json, text/plain, */*')
+        
+        with urllib.request.urlopen(req, timeout=10, context=UNVERIFIED_CTX) as response:
+            data = json.loads(response.read().decode('utf-8'))
+        
+        if not data or len(data) == 0:
+            return f"📅 Графік відключень для черги {QUEUE_NUMBER}\n\nДані недоступні"
+        
+        from datetime import datetime
+        now = datetime.now()
+        
+        parts = [f"📅 Графік відключень для черги {QUEUE_NUMBER}\n"]
+        
+        # Process each day in schedule
+        for day_data in data[:3]:  # Show max 3 days
+            event_date = day_data.get('eventDate', '')
+            queues = day_data.get('queues', {}).get(QUEUE_NUMBER, [])
+            created_at = day_data.get('createdAt', '')
+            
+            parts.append(f"📆 {event_date}")
+            
+            if len(queues) == 0:
+                parts.append("  ✅ Відключень не заплановано\n")
+            else:
+                for slot in queues:
+                    shutdown_hours = slot.get('shutdownHours', '')
+                    from_time = slot.get('from', '')
+                    to_time = slot.get('to', '')
+                    
+                    # Check if outage is active now
+                    try:
+                        from_hour, from_min = map(int, from_time.split(':'))
+                        to_hour, to_min = map(int, to_time.split(':'))
+                        from_dt = datetime(now.year, now.month, now.day, from_hour, from_min)
+                        to_dt = datetime(now.year, now.month, now.day, to_hour, to_min)
+                        
+                        duration = (to_hour * 60 + to_min) - (from_hour * 60 + from_min)
+                        hours = duration // 60
+                        minutes = duration % 60
+                        duration_str = f"{hours}г {minutes}хв" if hours > 0 else f"{minutes}хв"
+                        
+                        if event_date == now.strftime('%d.%m.%Y'):
+                            if from_dt <= now <= to_dt:
+                                parts.append(f"  🔴 {shutdown_hours} ({duration_str}) - ЗАРАЗ")
+                            elif now < from_dt:
+                                parts.append(f"  ⏰ {shutdown_hours} ({duration_str})")
+                            else:
+                                parts.append(f"  ✓ {shutdown_hours} ({duration_str}) - завершено")
+                        else:
+                            parts.append(f"  ⚠️ {shutdown_hours} ({duration_str})")
+                    except:
+                        parts.append(f"  ⚠️ {shutdown_hours}")
+                parts.append("")
+        
+        if created_at:
+            parts.append(f"🕐 Оновлено: {created_at}")
+        
+        return "\n".join(parts)
+    
+    except Exception as e:
+        return f"📅 Графік відключень для черги {QUEUE_NUMBER}\n\n❌ Помилка завантаження: {e}"
 
 
 def get_updates(offset: Optional[int]) -> List[Dict[str, Any]]:
@@ -448,6 +579,13 @@ def main() -> int:
                     send_message(chat_id, build_battery_text())
                 except Exception as exc:  # noqa: BLE001
                     print(f"Failed to send battery status: {exc}")
+
+            elif cmd == "/schedule":
+                last_command_chat_id = chat_id
+                try:
+                    send_message(chat_id, build_schedule_text())
+                except Exception as exc:  # noqa: BLE001
+                    print(f"Failed to send schedule: {exc}")
 
             elif cmd == "/chatid":
                 last_command_chat_id = chat_id

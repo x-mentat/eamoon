@@ -205,75 +205,167 @@
         {% if error %}
           <div class="status error">Connection error: {{ error }}</div>
         {% else %}
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start;">
-            <div>
-          <div class="grid" style="grid-template-columns: 1fr;">
-            <div class="item"><div class="label">Grid V</div><div class="value">{{ data.grid_voltage }} V</div></div>
-            <div class="item"><div class="label">Grid Power</div><div class="value">{{ data.grid_power }} W</div></div>
-            <div class="item"><div class="label">AC Out V</div><div class="value">{{ data.ac_output_voltage }} V</div></div>
-            <div class="item"><div class="label">AC Out Hz</div><div class="value">{{ data.ac_output_freq }} Hz</div></div>
-            <div class="item"><div class="label">AC Power</div><div class="value">{{ data.ac_output_power }} W</div></div>
-            <div class="item"><div class="label">AC Current</div><div class="value">{{ data.ac_output_current }} A</div></div>
-            <div class="item"><div class="label">Battery V</div><div class="value">{{ data.battery_voltage }} V</div></div>
-            <div class="item"><div class="label">Battery A</div><div class="value">{{ data.battery_current }} A</div></div>
-            <div class="item"><div class="label">Battery SOC</div><div class="value">{{ data.battery_soc }} %</div></div>
-            <div class="item"><div class="label">Temp</div><div class="value">{{ data.temperature }} &deg;C</div></div>
-          </div>
-        </div>
-          <div style="display:flex; flex-direction:column; gap:14px;">
-          <div class="flow" aria-label="Energy flow diagram" style="text-align:center;">
-            {% set grid_power_str = (data.grid_power | string)|replace('N/A','0')|replace(' W','')|replace('W','')|trim %}
-            {% set grid_voltage_str = (data.grid_voltage | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim %}
-            {% set grid_power_val = grid_power_str|float %}
-            {% set grid_voltage_val = grid_voltage_str|float %}
-            {% set batt_current_str = (data.battery_current | string)|replace('N/A','0')|replace(' A','')|replace('A','')|trim %}
-            {% set batt_current_val = batt_current_str|float %}
-            {% set ac_power_val = data.ac_output_power|replace('N/A','0')|float %}
-            {% set use_grid = grid_power_val > 0.1 %}
-            {% set grid_disconnected = (grid_power_val <= 0.1) or (grid_voltage_val <= 1.0) %}
-            <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
-              <div class="d-flex align-items-center justify-content-center gap-3">
-                <div class="d-flex flex-column align-items-center">
-                  <div style="position:relative;width:76px;height:76px;">
-                    <img src="/static/img/grid_power.png" style="width:76px; height:76px;" alt="Grid">
-                    {% if grid_disconnected %}
-                      <i class="bi bi-power-off" style="font-size:48px; color:#ffb84d; position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));"></i>
-                    {% endif %}
+          <!-- Main Status Sections -->
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            
+            <!-- Schedule and Energy Flow Side by Side -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
+              
+              <!-- Electricity Schedule (Left) -->
+              <div id="scheduleSection">
+                <h2 style="font-size:18px;margin-bottom:10px;color:var(--text);display:flex;align-items:center;gap:8px;">
+                  <i class="bi bi-calendar3"></i> Electricity Schedule
+                  <span class="pill" style="font-size:11px;margin-left:auto;padding:4px 10px;" id="queueNumberBadge">...</span>
+                </h2>
+                
+                <div id="scheduleLoading" style="text-align:center;padding:30px;color:var(--muted);background:var(--panel);border-radius:12px;border:1px solid var(--border);">
+                  <div class="spinner-border spinner-border-sm" role="status" style="width:2rem;height:2rem;">
+                    <span class="visually-hidden">Loading...</span>
                   </div>
-                  <div class="label" style="font-size:14px;">Grid</div>
-                  <div class="label" style="font-size:15px;">{{ data.grid_voltage }} V</div>
+                  <div style="margin-top:12px;font-size:13px;">Loading schedule...</div>
                 </div>
-                <img src="/static/img/arrow_right.png" style="width:68px; height:68px;" alt="Arrow">
-                <div class="d-flex flex-column align-items-center">
-                  <img src="/static/img/invertor.png" style="width:80px; height:80px;" alt="Inverter">
-                  <div class="label" style="font-size:14px;">Inverter</div>
-                  <div class="label" style="font-size:15px;">{{ data.status_text }}</div>
-                </div>
-                <img src="/static/img/arrow_right.png" style="width:68px; height:68px;" alt="Arrow">
-                <div class="d-flex flex-column align-items-center">
-                  <img src="/static/img/house.png" style="width:80px; height:80px;" alt="Load">
-                  <div class="label" style="font-size:14px;">Load</div>
-                  <div class="label" style="font-size:15px;">{{ data.ac_output_power }} W</div>
-                </div>
-          </div>
-                <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
-                  <div class="d-flex flex-column align-items-center">
-                    <img src="/static/img/arrow_{% if batt_current_val < 0 %}up{% else %}down{% endif %}.png" style="width:60px; height:60px;" alt="Arrow">
-                    <img id="batteryIcon" src="/static/img/battery_full.svg" style="width:92px; height:92px; margin-top:4px;" alt="Battery">
-                    <div class="label" style="font-size:14px;">Battery</div>
-                    <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
-                    <div class="label" style="font-size:15px;">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
-                  </div>
-                </div>
-        </div>
 
-          <!-- Tuya Devices Status -->
-          <div id="tuyaDevicesSection" style="display:none; margin-top:12px;">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;color:var(--muted);font-size:13px;font-weight:600;">
-              <i class="bi bi-router"></i> Smart Devices
+                <div id="scheduleError" style="display:none;" class="status error"></div>
+
+                <div id="scheduleContent" style="display:none;">
+                  <div id="scheduleTodayCompact">
+                    <!-- Compact today's schedule -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Energy Flow Diagram (Right) -->
+              <div class="flow" aria-label="Energy flow diagram" style="text-align:center;">
+                {% set grid_power_str = (data.grid_power | string)|replace('N/A','0')|replace(' W','')|replace('W','')|trim %}
+                {% set grid_voltage_str = (data.grid_voltage | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim %}
+                {% set grid_power_val = grid_power_str|float %}
+                {% set grid_voltage_val = grid_voltage_str|float %}
+                {% set batt_current_str = (data.battery_current | string)|replace('N/A','0')|replace(' A','')|replace('A','')|trim %}
+                {% set batt_current_val = batt_current_str|float %}
+                {% set ac_power_val = data.ac_output_power|replace('N/A','0')|float %}
+                {% set use_grid = grid_power_val > 0.1 %}
+                {% set grid_disconnected = (grid_power_val <= 0.1) or (grid_voltage_val <= 1.0) %}
+                <div class="d-flex flex-column align-items-center justify-content-center gap-3" style="font-size:14px;">
+                  <div class="d-flex align-items-center justify-content-center gap-3">
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="position:relative;width:76px;height:76px;">
+                        <img src="/static/img/grid_power.png" style="width:76px; height:76px;" alt="Grid">
+                        {% if grid_disconnected %}
+                          <i class="bi bi-power-off" style="font-size:48px; color:#ffb84d; position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));"></i>
+                        {% endif %}
+                      </div>
+                      <div class="label" style="font-size:14px;">Grid</div>
+                      <div class="label" style="font-size:15px;">{{ data.grid_voltage }} V</div>
+                    </div>
+                    <img src="/static/img/arrow_right.png" style="width:68px; height:68px;" alt="Arrow">
+                    <div class="d-flex flex-column align-items-center">
+                      <img src="/static/img/invertor.png" style="width:80px; height:80px;" alt="Inverter">
+                      <div class="label" style="font-size:14px;">Inverter</div>
+                      <div class="label" style="font-size:15px;">{{ data.status_text }}</div>
+                    </div>
+                    <img src="/static/img/arrow_right.png" style="width:68px; height:68px;" alt="Arrow">
+                    <div class="d-flex flex-column align-items-center">
+                      <img src="/static/img/house.png" style="width:80px; height:80px;" alt="Load">
+                      <div class="label" style="font-size:14px;">Load</div>
+                      <div class="label" style="font-size:15px;">{{ data.ac_output_power }} W</div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-center gap-2" style="margin-top:4px;">
+                    <div class="d-flex flex-column align-items-center">
+                      <img src="/static/img/arrow_{% if batt_current_val < 0 %}up{% else %}down{% endif %}.png" style="width:60px; height:60px;" alt="Arrow">
+                      <img id="batteryIcon" src="/static/img/battery_full.svg" style="width:92px; height:92px; margin-top:4px;" alt="Battery">
+                      <div class="label" style="font-size:14px;">Battery</div>
+                      <div class="label" style="font-size:15px;">{{ data.battery_soc }}% / {{ data.battery_voltage }} V</div>
+                      <div class="label" style="font-size:15px;">{{ data.battery_current }} A / {{ data.battery_power }} W</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div id="tuyaDevicesList" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;"></div>
-          </div>
+
+            <!-- Detailed Metrics Cards -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+              
+              <!-- Grid Section -->
+              <div class="item" style="padding:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                  <i class="bi bi-plug-fill" style="color:var(--accent);font-size:20px;"></i>
+                  <div class="label" style="margin:0;font-size:14px;">GRID INPUT</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Voltage</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.grid_voltage }} V</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Power</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.grid_power }} W</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AC Output Section -->
+              <div class="item" style="padding:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                  <i class="bi bi-house-fill" style="color:var(--accent);font-size:20px;"></i>
+                  <div class="label" style="margin:0;font-size:14px;">AC OUTPUT</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Voltage</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.ac_output_voltage }} V</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Frequency</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.ac_output_freq }} Hz</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Power</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.ac_output_power }} W</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Current</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.ac_output_current }} A</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Battery Section -->
+              <div class="item" style="padding:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                  <i class="bi bi-battery-charging" style="color:var(--accent);font-size:20px;"></i>
+                  <div class="label" style="margin:0;font-size:14px;">BATTERY</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">State of Charge</span>
+                    <span style="font-size:18px;font-weight:700;color:var(--accent);">{{ data.battery_soc }} %</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Voltage</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.battery_voltage }} V</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Current</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.battery_current }} A</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--muted);">Temperature</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.temperature }} &deg;C</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tuya Devices Status -->
+            <div id="tuyaDevicesSection" style="display:none;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;color:var(--muted);font-size:13px;font-weight:600;">
+                <i class="bi bi-router"></i> Smart Devices
+              </div>
+              <div id="tuyaDevicesList" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px;"></div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -675,6 +767,116 @@
     loadTuyaDevices();
     setInterval(loadTuyaDevices, 10000);
     
+    // Load electricity schedule
+    async function loadElectricitySchedule() {
+      try {
+        const resp = await fetch('/electricity_schedule');
+        const result = await resp.json();
+        
+        if (!result.success) {
+          document.getElementById('scheduleLoading').style.display = 'none';
+          document.getElementById('scheduleError').textContent = 'Failed to load schedule: ' + (result.error || 'Unknown error');
+          document.getElementById('scheduleError').style.display = 'block';
+          return;
+        }
+        
+        const data = result.data;
+        const queueNum = result.queue;
+        
+        if (!data || data.length === 0) {
+          document.getElementById('scheduleLoading').style.display = 'none';
+          document.getElementById('scheduleError').textContent = 'No schedule data available';
+          document.getElementById('scheduleError').style.display = 'block';
+          return;
+        }
+        
+        // Update queue number badge
+        document.getElementById('queueNumberBadge').textContent = 'Queue: ' + queueNum;
+        
+        // Display compact schedule for today
+        const scheduleCompact = document.getElementById('scheduleTodayCompact');
+        let compactHTML = '';
+        
+        // Get today's data (first entry)
+        const todaySchedule = data[0];
+        if (todaySchedule) {
+          const eventDate = todaySchedule.eventDate;
+          const queues = todaySchedule.queues[queueNum] || [];
+          
+          if (queues.length === 0) {
+            compactHTML = `
+              <div class="item" style="background:rgba(124,209,79,0.08);border-color:rgba(124,209,79,0.3);padding:16px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <i class="bi bi-check-circle-fill" style="color:#7cd14f;font-size:28px;"></i>
+                  <div>
+                    <div style="font-size:16px;color:var(--text);font-weight:700;">No scheduled outages today</div>
+                    <div style="font-size:13px;color:var(--muted);margin-top:4px;">${eventDate}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            compactHTML = `<div style="display:grid;gap:10px;">`;
+            queues.forEach((slot) => {
+              const duration = calculateDuration(slot.from, slot.to);
+              const now = new Date();
+              const [fromHour, fromMin] = slot.from.split(':').map(Number);
+              const [toHour, toMin] = slot.to.split(':').map(Number);
+              const fromTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), fromHour, fromMin);
+              const toTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), toHour, toMin);
+              const isActive = now >= fromTime && now <= toTime;
+              const isPending = now < fromTime;
+              
+              compactHTML += `
+                <div class="item" style="background:rgba(255,80,80,0.08);border-color:rgba(255,80,80,0.3);padding:14px;${isActive ? 'border:2px solid #ff5050;' : ''}">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <i class="bi bi-${isActive ? 'power' : 'clock'}" style="color:#ff5050;font-size:24px;"></i>
+                      <div>
+                        <div style="font-size:16px;color:var(--text);font-weight:700;">${slot.shutdownHours}</div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${duration}</div>
+                      </div>
+                    </div>
+                    ${isActive ? '<div style="padding:5px 14px;background:rgba(255,80,80,0.3);border-radius:999px;font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;"><i class="bi bi-exclamation-triangle-fill"></i> Active Now</div>' : ''}
+                    ${isPending ? '<div style="padding:5px 14px;background:rgba(255,206,86,0.2);border-radius:999px;font-size:11px;font-weight:600;color:#ffce56;text-transform:uppercase;">Upcoming</div>' : ''}
+                  </div>
+                </div>
+              `;
+            });
+            compactHTML += `</div>`;
+          }
+        }
+        
+        scheduleCompact.innerHTML = compactHTML;
+        
+        document.getElementById('scheduleLoading').style.display = 'none';
+        document.getElementById('scheduleContent').style.display = 'block';
+        
+      } catch (e) {
+        console.error('Failed to load schedule', e);
+        document.getElementById('scheduleLoading').style.display = 'none';
+        document.getElementById('scheduleError').textContent = 'Failed to load schedule: ' + e.message;
+        document.getElementById('scheduleError').style.display = 'block';
+      }
+    }
+    
+    function calculateDuration(from, to) {
+      const [fromHour, fromMin] = from.split(':').map(Number);
+      const [toHour, toMin] = to.split(':').map(Number);
+      const fromMinutes = fromHour * 60 + fromMin;
+      const toMinutes = toHour * 60 + toMin;
+      const duration = toMinutes - fromMinutes;
+      const hours = Math.floor(duration / 60);
+      const minutes = duration % 60;
+      if (hours > 0 && minutes > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (hours > 0) {
+        return `${hours}h`;
+      } else {
+        return `${minutes}m`;
+      }
+    }
+    
     // Page Navigation
     function showPage(pageName) {
       document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -685,7 +887,7 @@
         page.classList.add('active');
         document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
         
-        // Load charts when charts page is shown
+        // Load data when page is shown
         if (pageName === 'charts' && !currentDays) {
           currentDays = '1';
           loadHistory();
@@ -709,15 +911,17 @@
       showPage(pageName);
     });
     
-    // Load charts on initial page
+    // Load initial data
     currentDays = '1';
     loadHistory();
+    loadElectricitySchedule();
     
     // Reduced reload interval to 5 min to save RPi4 load
     setInterval(() => {
       // Only refresh data, don't reload page
       loadTuyaDevices();
       loadBatteryDevices();
+      loadElectricitySchedule();
       if (document.getElementById('charts').classList.contains('active')) {
         loadHistory();
       }

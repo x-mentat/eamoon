@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import urllib.request
+import json
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -23,6 +25,7 @@ DB_PATH = os.getenv("DB_PATH", "inverter.db")
 INVERTER_IP = os.getenv("INVERTER_IP") or os.getenv("MODBUS_HOST", "192.168.1.100")
 LOCAL_IP = os.getenv("LOCAL_IP", "")
 INVERTER_MODEL = os.getenv("INVERTER_MODEL", "ISOLAR_SMG_II_11K")
+QUEUE_NUMBER = os.getenv("QUEUE_NUMBER", "5.2")
 
 # Ensure the DB exists so the UI can show helpful messaging even before data arrives.
 init_db(DB_PATH)
@@ -92,6 +95,32 @@ def tuya_devices():
         return jsonify({"error": "Tuya not available"})
     except Exception as e:
         return jsonify({"error": str(e)})
+
+
+@app.route("/electricity_schedule")
+def electricity_schedule():
+    """Fetch electricity schedule from be-svitlo API."""
+    try:
+        url = f"https://be-svitlo.oe.if.ua/schedule-by-queue?queue={QUEUE_NUMBER}"
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        req.add_header('Accept', 'application/json, text/plain, */*')
+        req.add_header('Accept-Language', 'en-US,en;q=0.9,uk;q=0.8')
+        req.add_header('Referer', 'https://be-svitlo.oe.if.ua/')
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return jsonify({
+                "success": True,
+                "queue": QUEUE_NUMBER,
+                "data": data
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "queue": QUEUE_NUMBER
+        })
 
 
 if __name__ == "__main__":
