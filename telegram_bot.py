@@ -40,7 +40,7 @@ UNVERIFIED_CTX = ssl._create_unverified_context()
 # ------------- Helpers -------------
 
 
-def send_message(chat_id: int | str, text: str) -> None:
+def send_message(chat_id: int | str, text: str, parse_mode: str = "HTML") -> None:
     """Send a message via Telegram bot API."""
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
@@ -49,6 +49,7 @@ def send_message(chat_id: int | str, text: str) -> None:
         {
             "chat_id": chat_id,
             "text": text,
+            "parse_mode": parse_mode,
         }
     ).encode("utf-8")
 
@@ -129,7 +130,7 @@ def get_tuya_devices_status(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["\n📱 Tuya устройства:"]
+        lines = ["📱 <b>Tuya</b>"]
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -144,9 +145,9 @@ def get_tuya_devices_status(token: str) -> str:
                         switch_on = item.get("value", False)
                         break
                 state_str = "✅ ON" if switch_on else "❌ OFF"
-                lines.append(f"  • {name}: {state_str}")
+                lines.append(f"• {name}: {state_str}")
             except Exception:
-                lines.append(f"  • {name}: ⚠️ (недоступно)")
+                lines.append(f"• {name}: ⚠️ (недоступно)")
         return "\n".join(lines) if len(lines) > 1 else ""
     except Exception as exc:
         print(f"Failed to get Tuya devices: {exc}")
@@ -244,9 +245,9 @@ def get_electricity_schedule() -> str:
         queues = today.get('queues', {}).get(QUEUE_NUMBER, [])
         
         if len(queues) == 0:
-            return f"\n\n📅 Графік відключень ({event_date}):\n✅ Відключень не заплановано"
+            return f"📅 <b>Графік відключень</b> <code>({event_date})</code>\n✅ Відключень не заплановано"
         
-        parts = [f"\n📅 Графік відключень ({event_date}):"]
+        schedule_lines = []
         
         # Check current time to mark active outages
         from datetime import datetime
@@ -265,15 +266,17 @@ def get_electricity_schedule() -> str:
                 to_dt = datetime(now.year, now.month, now.day, to_hour, to_min)
                 
                 if from_dt <= now <= to_dt:
-                    parts.append(f"🔴 {shutdown_hours} (ЗАРАЗ)")
+                    schedule_lines.append(f"🔴 {shutdown_hours} (ЗАРАЗ)")
                 elif now < from_dt:
-                    parts.append(f"⏰ {shutdown_hours}")
+                    schedule_lines.append(f"⏰ {shutdown_hours}")
                 else:
-                    parts.append(f"  {shutdown_hours}")
+                    schedule_lines.append(f"✓ {shutdown_hours}")
             except:
-                parts.append(f"  {shutdown_hours}")
+                schedule_lines.append(f"⚠️ {shutdown_hours}")
         
-        return "\n".join(parts)
+        schedule_text = "<pre>" + "\n".join(schedule_lines) + "</pre>"
+        header = f"📅 <b>Графік відключень</b> <code>({event_date})</code>"
+        return f"{header}\n{schedule_text}"
     
     except Exception as e:
         print(f"Failed to fetch electricity schedule: {e}")
@@ -303,42 +306,54 @@ def build_status_text() -> str:
         ],
     ):
         return (
-            "Зв'язок з інвертором втрачено.\n"
+            "<b>🚨 Мережі немає</b> <code>(OFFLINE)</code>\n\n"
             "Дані з інвертора зараз недоступні (усі основні показники N/A).\n"
-            f"Остання спроба оновлення: {ts or 'невідомо'}"
+            f"<i>Остання спроба оновлення: {ts or 'невідомо'}</i>"
         )
 
     net_state = (
-        "⚡ Мережа: Є (ONLINE)" if is_grid_up(payload) else "🚨 Мережі немає (OFFLINE)"
+        "<b>✅ Мережа є</b> <code>(ONLINE)</code>" if is_grid_up(payload) else "<b>🚨 Мережі немає</b> <code>(OFFLINE)</code>"
     )
-
-    parts: List[str] = [
-        net_state,
-        f"Останнє оновлення: {ts or 'невідомо'}",
-        "",
-    ]
 
     # Батарея
     soc = get_battery_soc(payload)
+    
+    # Форматування показників у <pre> блоці
+    metrics_lines = []
+    
     if soc is not None:
-        parts.append(f"Заряд батареї: {soc:.0f}% {battery_emoji(soc)}")
-
-    mapping = {
-        "grid_voltage": "Напруга мережі",
-        "grid_power": "Потужність мережі",
-        "ac_output_power": "Споживання (AC Load)",
-        "battery_voltage": "Напруга батареї",
-        "battery_current": "Струм батареї",
-    }
-
-    for key, label in mapping.items():
-        if key in payload:
-            parts.append(f"{label}: {payload[key]}")
+        metrics_lines.append(f"🔋 Battery SOC   : {soc:.0f} %")
+    
+    gv = payload.get("grid_voltage")
+    if gv is not None:
+        metrics_lines.append(f"⚡ Grid Volt     : {gv} V")
+    
+    gp = payload.get("grid_power")
+    if gp is not None:
+        metrics_lines.append(f"⚡ Grid Power    : {gp} W")
+    
+    ac = payload.get("ac_output_power")
+    if ac is not None:
+        metrics_lines.append(f"🔌 AC Load      : {ac} W")
+    
+    bv = payload.get("battery_voltage")
+    if bv is not None:
+        metrics_lines.append(f"🔋 Batt Volt    : {bv} V")
+    
+    bc = payload.get("battery_current")
+    if bc is not None:
+        metrics_lines.append(f"🔄 Batt Curr    : {bc} A")
+    
+    metrics_block = "<pre>" + "\n".join(metrics_lines) + "</pre>" if metrics_lines else ""
+    
+    parts: List[str] = [net_state]
+    if metrics_block:
+        parts.append(metrics_block)
 
     # Інтелектуальне попередження по батареї
     if soc is not None and soc < 20:
         parts.append(
-            "\n‼️ Увага: заряд батареї < 20%.\n"
+            "\n<b>‼️ Увага: заряд батареї &lt; 20%</b>\n"
             "Рекомендація: максимально обмежити споживання, "
             "не вмикати потужні прилади."
         )
@@ -355,6 +370,9 @@ def build_status_text() -> str:
     schedule_text = get_electricity_schedule()
     if schedule_text:
         parts.append(schedule_text)
+    
+    # Timestamp
+    parts.append(f"<i>Останнє оновлення: {ts or 'невідомо'}</i>")
 
     return "\n".join(parts)
 
