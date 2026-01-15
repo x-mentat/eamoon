@@ -40,18 +40,21 @@ UNVERIFIED_CTX = ssl._create_unverified_context()
 # ------------- Helpers -------------
 
 
-def send_message(chat_id: int | str, text: str, parse_mode: str = "HTML") -> None:
-    """Send a message via Telegram bot API."""
+def send_message(chat_id: int | str, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> None:
+    """Send a message via Telegram bot API with optional inline buttons."""
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
 
-    data = urllib.parse.urlencode(
-        {
-            "chat_id": chat_id,
-            "text": text,
-            "parse_mode": parse_mode,
-        }
-    ).encode("utf-8")
+    params = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": parse_mode,
+    }
+    
+    if buttons:
+        params["reply_markup"] = json.dumps(buttons)
+
+    data = urllib.parse.urlencode(params).encode("utf-8")
 
     url = f"{API_URL}/sendMessage"
     with urllib.request.urlopen(  # noqa: S310
@@ -64,6 +67,81 @@ def send_message(chat_id: int | str, text: str, parse_mode: str = "HTML") -> Non
         data = json.loads(body)
         if not data.get("ok"):
             raise RuntimeError(f"Telegram send failed: {data}")
+
+
+def get_status_buttons() -> Dict[str, Any]:
+    """Build inline keyboard buttons for status message."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🔄 Refresh", "callback_data": "refresh_status"},
+                {"text": "📊 Dashboard", "url": "http://172.16.0.41"},
+            ],
+            [
+                {"text": "⚙️ Bot", "callback_data": "bot_menu"},
+            ],
+        ]
+    }
+
+
+def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> None:
+    """Edit an existing message via Telegram bot API."""
+    if not BOT_TOKEN:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
+
+    params = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+        "parse_mode": parse_mode,
+    }
+    
+    if buttons:
+        params["reply_markup"] = json.dumps(buttons)
+
+    data = urllib.parse.urlencode(params).encode("utf-8")
+
+    url = f"{API_URL}/editMessageText"
+    try:
+        with urllib.request.urlopen(  # noqa: S310
+            url,
+            data=data,
+            timeout=10,
+            context=UNVERIFIED_CTX,
+        ) as resp:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body)
+            if not data.get("ok"):
+                print(f"Edit message failed: {data}")
+    except Exception as exc:
+        print(f"Edit message error: {exc}")
+
+
+def answer_callback_query(callback_id: str, text: str = "", show_alert: bool = False) -> None:
+    """Answer a callback query (button click) notification."""
+    if not BOT_TOKEN:
+        return
+
+    params = {
+        "callback_query_id": callback_id,
+        "text": text,
+        "show_alert": "true" if show_alert else "false",
+    }
+
+    data = urllib.parse.urlencode(params).encode("utf-8")
+
+    url = f"{API_URL}/answerCallbackQuery"
+    try:
+        with urllib.request.urlopen(  # noqa: S310
+            url,
+            data=data,
+            timeout=10,
+            context=UNVERIFIED_CTX,
+        ) as resp:
+            body = resp.read().decode("utf-8")
+            json.loads(body)
+    except Exception as exc:
+        print(f"Answer callback error: {exc}")
 
 
 def to_float(val: Any) -> Optional[float]:
@@ -587,7 +665,7 @@ def main() -> int:
             if cmd in ("/start", "/status"):
                 last_command_chat_id = chat_id
                 try:
-                    send_message(chat_id, build_status_text())
+                    send_message(chat_id, build_status_text(), buttons=get_status_buttons())
                 except Exception as exc:  # noqa: BLE001
                     print(f"Failed to send status: {exc}")
 
@@ -611,6 +689,36 @@ def main() -> int:
                     send_message(chat_id, f"Ваш chat_id: {chat_id}")
                 except Exception as exc:  # noqa: BLE001
                     print(f"Failed to send chat_id: {exc}")
+            
+            # Handle callback queries (button clicks)
+            callback_query = upd.get("callback_query")
+            if callback_query:
+                callback_id = callback_query.get("id")
+                callback_data = callback_query.get("data")
+                callback_chat_id = callback_query.get("from", {}).get("id")
+                msg_id = callback_query.get("message", {}).get("message_id")
+                
+                print(f"[CALLBACK] chat_id={callback_chat_id}, data={callback_data}, msg_id={msg_id}")
+                
+                if callback_data == "refresh_status" and callback_chat_id:
+                    try:
+                        status_text = build_status_text()
+                        # Edit existing message with new status
+                        if msg_id:
+                            edit_message_text(callback_chat_id, msg_id, status_text, buttons=get_status_buttons())
+                        else:
+                            send_message(callback_chat_id, status_text, buttons=get_status_buttons())
+                        answer_callback_query(callback_id, "✅ Оновлено")
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"Failed to refresh status: {exc}")
+                        answer_callback_query(callback_id, "❌ Помилка оновлення", show_alert=True)
+                
+                elif callback_data == "bot_menu" and callback_chat_id:
+                    try:
+                        menu_text = "⚙️ <b>Меню бота</b>\n\n/status - Статус мережі\n/battery - Статус батареї\n/schedule - Графік відключень"
+                        answer_callback_query(callback_id, "Меню")
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"Failed to show menu: {exc}")
 
         # --- 2) Періодична перевірка мережі + автопостинг ---
         now = time.time()
