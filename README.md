@@ -1,11 +1,12 @@
 # Easun Inverter Monitor
 
-Flask UI + background Modbus poller + optional Telegram bot alerts, with Tuya smart plug integration. The poller stores readings in SQLite; the UI reads the latest entry and charts history.
+Flask UI + background Modbus poller + optional Telegram bot alerts, with Tuya smart plug integration. Supports both SQLite (default) and MySQL for data storage.
 
 ## Features
 - Web dashboard with real-time status and historical charts (downsampling by period).
 - Background Modbus poller (no inverter load from the UI).
 - Telegram bot: `/status`, `/battery`, and automatic alerts on grid loss/restore.
+- **Database options**: SQLite (default) or MySQL for better concurrent access.
 - Tuya Cloud integration (user account mode):
 	- Show device ON/OFF state in `/status` bot message.
 	- Optional auto-turn-off all Tuya devices when grid power is lost.
@@ -73,10 +74,33 @@ Tuya Cloud (optional):
 - `TUYA_TURN_OFF_ON_POWER_LOSS` (true/false): turn OFF all devices on grid loss
 - `TUYA_TURN_ON_ON_GRID_BACK` (true/false): turn ON all devices on grid restore
 
+Database configuration (optional):
+- `DB_TYPE` (default: `sqlite`) – set to `mysql` to use MySQL instead of SQLite
+- `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
+
+See [DATABASE.md](DATABASE.md) for MySQL setup and migration instructions.
+
 Notes on Tuya:
 - Devices are listed via user-mode endpoint (`/v1.0/users/{USER_ID}/devices`).
 - Commands use `switch_1: True|False` for basic on/off smart plugs.
 - If a device is offline, the API returns an error; the bot reports and continues.
+
+## Database Migration
+
+To migrate from SQLite to MySQL:
+```bash
+# Install MySQL support
+pip install -r requirements.txt
+
+# Run migration script
+python migrate_to_mysql.py --mysql-password your_password
+
+# Update .env and restart
+echo "DB_TYPE=mysql" >> .env
+sudo systemctl restart easun-web easun-poller easun-bot
+```
+
+Full documentation: [DATABASE.md](DATABASE.md)
 
 ## Bot quick commands
 - `/status` – overall status (grid, key metrics) + Tuya device states (if configured)
