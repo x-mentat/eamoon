@@ -1,0 +1,22 @@
+[Unit]
+Description=JK BMS Battery Monitoring Service
+After=network.target bluetooth.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=eamoon
+Group=eamoon
+WorkingDirectory=/opt/eamoon
+Environment="PATH=/opt/eamoon/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/eamoon/.venv/bin/python /opt/eamoon/jk_bms_service.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Bluetooth permissions
+SupplementaryGroups=bluetooth
+
+[Install]
+WantedBy=multi-user.target

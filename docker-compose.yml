@@ -37,3 +37,19 @@ services:
     # Uncomment to disable bot if you don't set TELEGRAM_BOT_TOKEN/CHAT_ID
     # deploy:
     #   replicas: 0
+
+  jkbms:
+    build:
+      context: .
+      dockerfile: Dockerfile.poller
+    command: python jk_bms_service.py
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /var/run/dbus:/var/run/dbus:ro
+    network_mode: host
+    privileged: true
+    # Uncomment to disable JK BMS service if you don't have a JK BMS
+    deploy:
+      replicas: 0

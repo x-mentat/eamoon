@@ -6,6 +6,7 @@ Flask UI + background Modbus poller + optional Telegram bot alerts, with Tuya sm
 - Web dashboard with real-time status and historical charts (downsampling by period).
 - Electricity schedule viewer showing planned outages from be-svitlo.oe.if.ua.
 - Background Modbus poller (no inverter load from the UI).
+- **Optional JK BMS integration** via Bluetooth for accurate battery monitoring.
 - Telegram bot: `/status`, `/battery`, and automatic alerts on grid loss/restore.
 - Tuya Cloud integration (user account mode):
 	- Show device ON/OFF state in `/status` bot message.
@@ -77,10 +78,55 @@ Tuya Cloud (optional):
 Electricity Schedule (optional):
 - `QUEUE_NUMBER` (e.g. `5.2`): Your electricity queue number for be-svitlo.oe.if.ua API
 
+JK BMS (optional - for Bluetooth battery monitoring):
+- `JK_BMS_ADDRESS`: Bluetooth MAC address of your JK BMS (run `python jk_bms/jk-util.py --scan` to discover)
+- `JK_BMS_POLL_INTERVAL`: How often to poll the BMS in seconds (default: 30)
+- `JK_DEVICES_FILE`: Path to saved devices YAML file (default: jk_bms/jk_devices.yaml)
+
 Notes on Tuya:
 - Devices are listed via user-mode endpoint (`/v1.0/users/{USER_ID}/devices`).
 - Commands use `switch_1: True|False` for basic on/off smart plugs.
 - If a device is offline, the API returns an error; the bot reports and continues.
+
+## JK BMS Setup (Optional)
+
+If you have a JK BMS connected to your battery, you can enable Bluetooth monitoring for more accurate battery data:
+
+### 1. Discover your JK BMS device
+```bash
+python jk_bms/jk-util.py --scan
+```
+
+This will scan for JK BMS devices and save them to `jk_bms/jk_devices.yaml`.
+
+### 2. Configure environment
+Add to your `.env` file:
+```bash
+JK_BMS_ADDRESS=XX:XX:XX:XX:XX:XX  # Your BMS Bluetooth MAC address
+JK_BMS_POLL_INTERVAL=30           # Optional, default 30 seconds
+```
+
+### 3. Enable the JK BMS service
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Test the service
+python jk_bms_service.py
+
+# Install systemd service
+sudo cp systemd/easun-jkbms.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now easun-jkbms.service
+```
+
+### What it provides:
+- Accurate battery voltage from BMS (replaces inverter's battery reading)
+- Individual cell voltages (min, max, delta)
+- Precise current measurement
+- Battery temperature from BMS
+- SOC estimation based on cell voltages
+- All data is merged into the existing database
 
 ## Bot quick commands
 - `/status` – overall status (grid, key metrics) + Tuya device states (if configured) + today's electricity schedule
