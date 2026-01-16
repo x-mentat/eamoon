@@ -7,6 +7,7 @@ import ssl
 import time
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -35,6 +36,9 @@ else:
 
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
+
+# Timezone for Ukraine (EET - UTC+2)
+EET = timezone(timedelta(hours=2))
 
 
 # ------------- Helpers -------------
@@ -347,8 +351,7 @@ def get_electricity_schedule() -> str:
         schedule_lines = []
         
         # Check current time to mark active outages
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.now(EET)
         
         for slot in queues:
             shutdown_hours = slot.get('shutdownHours', '')
@@ -534,8 +537,7 @@ def build_schedule_text() -> str:
         if not data or len(data) == 0:
             return f"📅 Графік відключень для черги {QUEUE_NUMBER}\n\nДані недоступні"
         
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.now(EET)
         
         parts = [f"📅 Графік відключень для черги {QUEUE_NUMBER}\n"]
         
