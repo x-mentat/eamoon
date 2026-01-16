@@ -7,11 +7,13 @@ import ssl
 import time
 import urllib.parse
 import urllib.request
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
 from data_store import get_latest_reading
+from timezone_utils import EET
 try:
     import tuya
     TUYA_AVAILABLE = True
@@ -347,8 +349,7 @@ def get_electricity_schedule() -> str:
         schedule_lines = []
         
         # Check current time to mark active outages
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.now(EET)
         
         for slot in queues:
             shutdown_hours = slot.get('shutdownHours', '')
@@ -534,8 +535,7 @@ def build_schedule_text() -> str:
         if not data or len(data) == 0:
             return f"📅 Графік відключень для черги {QUEUE_NUMBER}\n\nДані недоступні"
         
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.now(EET)
         
         parts = [f"📅 Графік відключень для черги {QUEUE_NUMBER}\n"]
         
