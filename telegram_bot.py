@@ -7,12 +7,13 @@ import ssl
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
 from data_store import get_latest_reading
+from timezone_utils import EET
 try:
     import tuya
     TUYA_AVAILABLE = True
@@ -36,9 +37,6 @@ else:
 
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
-
-# Timezone for Ukraine (EET - UTC+2)
-EET = timezone(timedelta(hours=2))
 
 
 # ------------- Helpers -------------

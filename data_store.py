@@ -8,6 +8,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+from timezone_utils import now_eet
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS readings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +36,7 @@ def save_reading(
 ) -> None:
     """Persist a single reading (or error) to the database."""
     path = Path(db_path)
-    timestamp = datetime.datetime.utcnow().isoformat(timespec="seconds")
+    timestamp = now_eet().isoformat(timespec="seconds")
     payload_json = json.dumps(payload) if payload is not None else None
     with sqlite3.connect(path) as conn:
         conn.execute(
