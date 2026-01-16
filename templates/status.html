@@ -189,6 +189,145 @@
     </ul>
   </nav>
 
+  <!-- Battery Card Macro -->
+  {% macro battery_card(battery_num, prefix='') %}
+  {% set has_bms = data.get(prefix ~ 'bms_cell_count', 0) and data.get(prefix ~ 'bms_cell_count', 0) > 0 %}
+  <div class="item" style="padding:16px;background:linear-gradient(135deg, var(--panel) 0%, var(--card) 100%);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <i class="bi bi-battery-charging" style="color:var(--accent);font-size:20px;"></i>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <h3 style="margin:0;font-size:16px;color:var(--text);">Battery {{ battery_num }}</h3>
+            {% if has_bms %}
+            <span style="padding:3px 8px;background:rgba(124,209,79,0.2);border-radius:999px;font-size:9px;font-weight:700;color:#7cd14f;">
+              <i class="bi bi-bluetooth"></i> ON
+            </span>
+            {% else %}
+            <span style="padding:3px 8px;background:rgba(150,150,150,0.2);border-radius:999px;font-size:9px;font-weight:700;color:#888;">
+              <i class="bi bi-bluetooth"></i> OFF
+            </span>
+            {% endif %}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:monospace;">
+            {% if data.get(prefix ~ 'bms_name') %}
+              {{ data.get(prefix ~ 'bms_name') }} • {{ data.get(prefix ~ 'bms_address', 'No MAC') }}
+            {% else %}
+              Not configured
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% set batt_current_str = (data.get(prefix ~ 'battery_current', 'N/A') | string)|replace('N/A','0')|replace(' A','')|replace('A','')|trim %}
+      {% set batt_current_val = batt_current_str|float %}
+      {% if batt_current_val < -0.1 %}
+        <span style="padding:4px 10px;background:rgba(124,209,79,0.2);border-radius:999px;font-size:10px;font-weight:700;color:#7cd14f;">
+          <i class="bi bi-arrow-up-circle-fill"></i> CHG
+        </span>
+      {% elif batt_current_val > 0.1 %}
+        <span style="padding:4px 10px;background:rgba(255,206,86,0.2);border-radius:999px;font-size:10px;font-weight:700;color:#ffce56;">
+          <i class="bi bi-arrow-down-circle-fill"></i> DIS
+        </span>
+      {% else %}
+        <span style="padding:4px 10px;background:rgba(150,150,150,0.2);border-radius:999px;font-size:10px;font-weight:700;color:#aaa;">
+          <i class="bi bi-pause-circle-fill"></i> IDLE
+        </span>
+      {% endif %}
+    </div>
+
+    <!-- Compact Battery Stats -->
+    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;margin-bottom:12px;">
+      <div style="background:var(--panel);padding:8px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">SOC</div>
+        <div style="font-size:16px;font-weight:700;color:var(--accent);">{{ data.get(prefix ~ 'battery_soc', 'N/A') }}%</div>
+      </div>
+      <div style="background:var(--panel);padding:8px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">Voltage</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);">{{ data.get(prefix ~ 'battery_voltage', 'N/A') }} V</div>
+      </div>
+      <div style="background:var(--panel);padding:8px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">Current</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);">{{ data.get(prefix ~ 'battery_current', 'N/A') }} A</div>
+      </div>
+      <div style="background:var(--panel);padding:8px;border-radius:8px;border:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">Temp</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);">{{ data.get(prefix ~ 'temperature', 'N/A') }}°C</div>
+      </div>
+    </div>
+
+    <!-- BMS Cell Info -->
+    {% set cell_min = (data.get(prefix ~ 'bms_cell_min_v', '0') | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim|float %}
+    {% set cell_max = (data.get(prefix ~ 'bms_cell_max_v', '0') | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim|float %}
+    {% set cell_delta = (data.get(prefix ~ 'bms_cell_delta_v', '0') | string)|replace('N/A','0')|replace(' V','')|replace('V','')|trim|float %}
+    {% set cell_count = data.get(prefix ~ 'bms_cell_count', 0) %}
+    {% set delta_mv = (cell_delta * 1000)|int %}
+    
+    <div style="padding-top:10px;border-top:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+        <i class="bi bi-diagram-3"></i> Cell Balance
+        {% if not has_bms %}
+        <span style="font-size:9px;color:#ff9f40;font-weight:600;">(Offline)</span>
+        {% endif %}
+      </div>
+      
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;">
+        <div style="background:var(--panel);padding:6px;border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:8px;color:var(--muted);text-transform:uppercase;">Cells</div>
+          <div style="font-size:14px;font-weight:700;color:{% if has_bms %}var(--accent){% else %}#666{% endif %};">
+            {% if has_bms %}{{ cell_count }}{% else %}--{% endif %}
+          </div>
+        </div>
+        <div style="background:var(--panel);padding:6px;border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:8px;color:var(--muted);text-transform:uppercase;">Delta</div>
+          {% if has_bms %}
+            {% if delta_mv > 100 %}
+              <div style="font-size:14px;font-weight:700;color:#ff5050;">{{ delta_mv }}mV</div>
+            {% elif delta_mv > 50 %}
+              <div style="font-size:14px;font-weight:700;color:#ffce56;">{{ delta_mv }}mV</div>
+            {% else %}
+              <div style="font-size:14px;font-weight:700;color:#7cd14f;">{{ delta_mv }}mV</div>
+            {% endif %}
+          {% else %}
+            <div style="font-size:14px;font-weight:700;color:#666;">--</div>
+          {% endif %}
+        </div>
+        <div style="background:var(--panel);padding:6px;border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:8px;color:var(--muted);text-transform:uppercase;">Min</div>
+          <div style="font-size:12px;font-weight:600;color:{% if has_bms %}var(--text){% else %}#666{% endif %};">
+            {% if has_bms %}{{ "%.3f"|format(cell_min) }}V{% else %}-.---{% endif %}
+          </div>
+        </div>
+        <div style="background:var(--panel);padding:6px;border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:8px;color:var(--muted);text-transform:uppercase;">Max</div>
+          <div style="font-size:12px;font-weight:600;color:{% if has_bms %}var(--text){% else %}#666{% endif %};">
+            {% if has_bms %}{{ "%.3f"|format(cell_max) }}V{% else %}-.---{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if has_bms and delta_mv > 100 %}
+      <div style="margin-top:8px;padding:6px 10px;background:rgba(255,80,80,0.15);border-left:3px solid #ff5050;border-radius:6px;">
+        <div style="font-size:10px;color:#ff5050;font-weight:600;display:flex;align-items:center;gap:6px;">
+          <i class="bi bi-exclamation-triangle-fill"></i> Cell imbalance
+        </div>
+      </div>
+      {% elif has_bms and delta_mv > 50 %}
+      <div style="margin-top:8px;padding:6px 10px;background:rgba(255,206,86,0.15);border-left:3px solid #ffce56;border-radius:6px;">
+        <div style="font-size:10px;color:#ffce56;font-weight:600;display:flex;align-items:center;gap:6px;">
+          <i class="bi bi-exclamation-circle-fill"></i> Moderate imbalance
+        </div>
+      </div>
+      {% elif not has_bms %}
+      <div style="margin-top:8px;padding:6px 10px;background:rgba(255,159,64,0.1);border-left:3px solid #ff9f40;border-radius:6px;">
+        <div style="font-size:10px;color:#ff9f40;font-weight:600;">
+          Run jk_bms_service.py to connect
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endmacro %}
+
   <!-- Content Area -->
   <div class="content">
     <!-- STATUS PAGE -->
@@ -330,32 +469,13 @@
                 </div>
               </div>
 
-              <!-- Battery Section -->
-              <div class="item" style="padding:16px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
-                  <i class="bi bi-battery-charging" style="color:var(--accent);font-size:20px;"></i>
-                  <div class="label" style="margin:0;font-size:14px;">BATTERY</div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:13px;color:var(--muted);">State of Charge</span>
-                    <span style="font-size:18px;font-weight:700;color:var(--accent);">{{ data.battery_soc }} %</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:13px;color:var(--muted);">Voltage</span>
-                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.battery_voltage }} V</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:13px;color:var(--muted);">Current</span>
-                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.battery_current }} A</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:13px;color:var(--muted);">Temperature</span>
-                    <span style="font-size:16px;font-weight:700;color:var(--text);">{{ data.temperature }} &deg;C</span>
-                  </div>
-                </div>
-              </div>
+            </div>
 
+            <!-- JK BMS Battery Banks -->
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              {{ battery_card(1, '') }}
+              {{ battery_card(2, 'battery2_') }}
+              {{ battery_card(3, 'battery3_') }}
             </div>
 
             <!-- Tuya Devices Status -->

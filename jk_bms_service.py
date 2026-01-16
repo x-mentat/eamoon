@@ -58,6 +58,24 @@ def load_device_address() -> Optional[str]:
     return None
 
 
+def load_all_devices() -> Dict[str, Dict]:
+    """Load all JK BMS devices from YAML file."""
+    devices = {}
+    
+    try:
+        if Path(JK_DEVICES_FILE).exists():
+            with open(JK_DEVICES_FILE, 'r') as f:
+                yaml_devices = yaml.safe_load(f) or {}
+                # Filter only enabled devices (not commented)
+                for addr, info in yaml_devices.items():
+                    if info and 'name' in info:
+                        devices[addr] = info
+    except Exception as e:
+        logger.error(f"Failed to load devices from YAML: {e}")
+    
+    return devices
+
+
 def parse_jk_bms_data(data: bytes) -> Optional[Dict[str, float]]:
     """
     Parse JK BMS data packet and extract battery information.
@@ -196,8 +214,14 @@ async def read_jk_bms(address: str) -> Optional[Dict[str, float]]:
         return None
 
 
-async def update_battery_data_in_db(bms_data: Dict[str, float]) -> None:
-    """Update battery data in the database while preserving inverter data."""
+async def update_battery_data_in_db(bms_data: Dict[str, float], battery_id: int = 1, device_info: Dict = None) -> None:
+    """Update battery data in the database while preserving inverter data.
+    
+    Args:
+        bms_data: BMS telemetry data
+        battery_id: Battery identifier (1, 2, or 3)
+        device_info: Device info dict with 'name' and 'address'
+    """
     try:
         # Get current reading from database
         current_data, error, timestamp = get_latest_reading(DB_PATH)
@@ -205,32 +229,44 @@ async def update_battery_data_in_db(bms_data: Dict[str, float]) -> None:
         if current_data is None:
             current_data = {}
         
+        # Prefix for this battery
+        prefix = f'battery{battery_id}_' if battery_id > 1 else ''
+        
         # Update battery fields from BMS
         if 'battery_voltage' in bms_data:
-            current_data['battery_voltage'] = f"{bms_data['battery_voltage']:.1f}"
+            current_data[f'{prefix}battery_voltage'] = f"{bms_data['battery_voltage']:.1f}"
         
         if 'battery_current' in bms_data:
-            current_data['battery_current'] = f"{bms_data['battery_current']:.1f}"
+            current_data[f'{prefix}battery_current'] = f"{bms_data['battery_current']:.1f}"
         
         if 'battery_soc' in bms_data:
-            current_data['battery_soc'] = f"{bms_data['battery_soc']:.0f}"
+            current_data[f'{prefix}battery_soc'] = f"{bms_data['battery_soc']:.0f}"
         
         if 'battery_power' in bms_data:
-            current_data['battery_power'] = f"{bms_data['battery_power']:.0f}"
+            current_data[f'{prefix}battery_power'] = f"{bms_data['battery_power']:.0f}"
         
         if 'temperature' in bms_data:
-            current_data['temperature'] = f"{bms_data['temperature']:.0f}"
+            current_data[f'{prefix}temperature'] = f"{bms_data['temperature']:.0f}"
         
         # Add BMS-specific metadata
-        current_data['bms_cell_count'] = bms_data.get('cell_count', 0)
-        current_data['bms_cell_min_v'] = f"{bms_data.get('cell_voltage_min', 0):.3f}"
-        current_data['bms_cell_max_v'] = f"{bms_data.get('cell_voltage_max', 0):.3f}"
-        current_data['bms_cell_delta_v'] = f"{bms_data.get('cell_voltage_delta', 0):.3f}"
+        current_data[f'{prefix}bms_cell_count'] = bms_data.get('cell_count', 0)
+        current_data[f'{prefix}bms_cell_min_v'] = f"{bms_data.get('cell_voltage_min', 0):.3f}"
+        current_data[f'{prefix}bms_cell_max_v'] = f"{bms_data.get('cell_voltage_max', 0):.3f}"
+        current_data[f'{prefix}bms_cell_delta_v'] = f"{bms_data.get('cell_voltage_delta', 0):.3f}"
+        
+        # Add device info if provided
+        if device_info:
+            if 'name' in device_info:
+                current_data[f'{prefix}bms_name'] = device_info['name']
+            if 'address' in device_info:
+                current_data[f'{prefix}bms_address'] = device_info['address']
         
         # Save updated data
         save_reading(DB_PATH, current_data, None)
         logger.info(
-            "Battery updated: %.1fV, %.1fA, %.0f%%, %.1f°C, %d cells (delta: %.3fV)",
+            "Battery %d (%s) updated: %.1fV, %.1fA, %.0f%%, %.1f°C, %d cells (delta: %.3fV)",
+            battery_id,
+            device_info.get('name', 'Unknown') if device_info else 'Unknown',
             bms_data.get('battery_voltage', 0),
             bms_data.get('battery_current', 0),
             bms_data.get('battery_soc', 0),
@@ -240,46 +276,80 @@ async def update_battery_data_in_db(bms_data: Dict[str, float]) -> None:
         )
         
     except Exception as e:
-        logger.error(f"Failed to update database: {e}")
+        logger.error(f"Failed to update database for battery {battery_id}: {e}")
 
 
 async def run_forever() -> None:
-    """Main polling loop."""
-    address = load_device_address()
+    """Main polling loop - reads all configured batteries."""
+    devices = load_all_devices()
     
-    if not address:
-        logger.error("No JK BMS address configured!")
-        logger.error("Set JK_BMS_ADDRESS in .env or run jk-util.py --scan to discover devices")
-        return
+    if not devices:
+        # Fallback to single device mode
+        address = load_device_address()
+        if not address:
+            logger.error("No JK BMS devices configured!")
+            logger.error("Set JK_BMS_ADDRESS in .env or run jk-util.py --scan to discover devices")
+            return
+        devices = {address: {'name': 'Battery1', 'address': address}}
     
     logger.info(
-        "Starting JK BMS poller for %s -> %s every %ss (max errors: %s)",
-        address,
+        "Starting JK BMS poller for %d device(s) -> %s every %ss",
+        len(devices),
         DB_PATH,
         POLL_INTERVAL,
-        MAX_CONSECUTIVE_ERRORS,
     )
     
-    failure_count = 0
+    for addr, info in devices.items():
+        logger.info("  - %s (%s)", info.get('name', 'Unknown'), addr)
+    
+    failure_counts = {addr: 0 for addr in devices.keys()}
     
     while True:
         try:
-            bms_data = await read_jk_bms(address)
+            # Read all batteries in parallel
+            tasks = []
+            device_list = list(devices.items())
             
-            if bms_data:
-                await update_battery_data_in_db(bms_data)
-                failure_count = 0
-            else:
-                failure_count += 1
-                logger.warning(f"No data from BMS ({failure_count}/{MAX_CONSECUTIVE_ERRORS})")
-                
-                if failure_count >= MAX_CONSECUTIVE_ERRORS:
-                    logger.critical("Too many consecutive errors. Exiting.")
-                    raise RuntimeError("Max consecutive errors reached")
+            for idx, (addr, info) in enumerate(device_list, 1):
+                if failure_counts[addr] < MAX_CONSECUTIVE_ERRORS:
+                    tasks.append((idx, addr, info, read_jk_bms(addr)))
+            
+            # Wait for all reads to complete
+            for idx, addr, info, task_coro in tasks:
+                try:
+                    bms_data = await task_coro
+                    
+                    if bms_data:
+                        await update_battery_data_in_db(bms_data, battery_id=idx, device_info=info)
+                        failure_counts[addr] = 0
+                    else:
+                        failure_counts[addr] += 1
+                        logger.warning(
+                            "%s: No data from BMS (%d/%d)",
+                            info.get('name', addr),
+                            failure_counts[addr],
+                            MAX_CONSECUTIVE_ERRORS
+                        )
+                        
+                except Exception as exc:
+                    failure_counts[addr] += 1
+                    logger.error(
+                        "%s: Read failed (%d/%d): %s",
+                        info.get('name', addr),
+                        failure_counts[addr],
+                        MAX_CONSECUTIVE_ERRORS,
+                        exc
+                    )
+            
+            # Check if all devices have failed
+            if all(count >= MAX_CONSECUTIVE_ERRORS for count in failure_counts.values()):
+                logger.critical("All batteries failed. Exiting.")
+                raise RuntimeError("All batteries unreachable")
             
         except Exception as exc:
-            failure_count += 1
-            logger.error(f"Collect failed ({failure_count}/{MAX_CONSECUTIVE_ERRORS}): {exc}")
+            if "All batteries" in str(exc):
+                raise
+            logger.error(f"Polling error: {exc}")
             
             if failure_count >= MAX_CONSECUTIVE_ERRORS:
                 logger.critical("Too many consecutive errors. Exiting to allow service restart.")
