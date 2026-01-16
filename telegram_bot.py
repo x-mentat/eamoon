@@ -233,7 +233,7 @@ def get_tuya_devices_status(token: str) -> str:
         if not device_lines:
             return ""
         
-        header = "📱 <b>Tuya</b>"
+        header = "🏠 <b>Smart Devices</b>"
         content = "\n".join(device_lines)
         return f"{header}\n{content}"
     except Exception as exc:
@@ -266,7 +266,15 @@ def turn_off_tuya_devices(token: str) -> str:
         
         header = "<b>🔌 Вимикаю Tuya пристрої:</b>"
         content = "\n".join(action_lines)
-        return f"{header}\n{content}"
+        
+        # Add current status after turning off
+        time.sleep(1)  # Give devices time to update
+        status_msg = get_tuya_devices_status(token)
+        
+        result = f"{header}\n{content}"
+        if status_msg:
+            result += f"\n\n{status_msg}"
+        return result
     except Exception as exc:
         print(f"Failed to turn off devices: {exc}")
         return ""
@@ -296,7 +304,15 @@ def turn_on_tuya_devices(token: str) -> str:
         
         header = "<b>🔌 Вмикаю Tuya пристрої:</b>"
         content = "\n".join(action_lines)
-        return f"{header}\n{content}"
+        
+        # Add current status after turning on
+        time.sleep(1)  # Give devices time to update
+        status_msg = get_tuya_devices_status(token)
+        
+        result = f"{header}\n{content}"
+        if status_msg:
+            result += f"\n\n{status_msg}"
+        return result
     except Exception as exc:
         print(f"Failed to turn on devices: {exc}")
         return ""
@@ -372,7 +388,7 @@ def get_electricity_schedule() -> str:
             except:
                 schedule_lines.append(f"⚠️ {shutdown_hours}")
         
-        schedule_text = "<pre>" + "\n".join(schedule_lines) + "</pre>"
+        schedule_text = "<code>" + "\n".join(schedule_lines) + "</code>"
         header = f"📅 <b>Графік відключень</b> <code>({event_date})</code>"
         return f"{header}\n{schedule_text}"
     
@@ -416,33 +432,33 @@ def build_status_text() -> str:
     # Батарея
     soc = get_battery_soc(payload)
     
-    # Форматування показників у <pre> блоці
+    # Форматування показників у <code> блоці
     metrics_lines = []
     
     if soc is not None:
-        metrics_lines.append(f"🔋 Battery SOC   : {soc:.0f} %")
+        metrics_lines.append(f"🔋 Battery SOC: {soc:.0f} %")
     
     gv = payload.get("grid_voltage")
     if gv is not None:
-        metrics_lines.append(f"⚡ Grid Volt     : {gv} V")
+        metrics_lines.append(f"⚡ Grid Volt  : {gv} V")
     
     gp = payload.get("grid_power")
     if gp is not None:
-        metrics_lines.append(f"⚡ Grid Power    : {gp} W")
+        metrics_lines.append(f"⚡ Grid Power : {gp} W")
     
     ac = payload.get("ac_output_power")
     if ac is not None:
-        metrics_lines.append(f"🔌 AC Load      : {ac} W")
+        metrics_lines.append(f"🔌 AC Load    : {ac} W")
     
     bv = payload.get("battery_voltage")
     if bv is not None:
-        metrics_lines.append(f"🔋 Batt Volt    : {bv} V")
+        metrics_lines.append(f"🔋 Batt Volt  : {bv} V")
     
     bc = payload.get("battery_current")
     if bc is not None:
-        metrics_lines.append(f"🔄 Batt Curr    : {bc} A")
+        metrics_lines.append(f"🔄 Batt Curr  : {bc} A")
     
-    metrics_block = "<pre>" + "\n".join(metrics_lines) + "</pre>" if metrics_lines else ""
+    metrics_block = "<code>" + "\n".join(metrics_lines) + "</code>" if metrics_lines else ""
     
     parts: List[str] = [net_state]
     if metrics_block:
