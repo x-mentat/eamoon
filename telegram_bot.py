@@ -208,7 +208,8 @@ def get_tuya_devices_status(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["📱 <b>Tuya</b>"]
+        
+        device_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -223,10 +224,16 @@ def get_tuya_devices_status(token: str) -> str:
                         switch_on = item.get("value", False)
                         break
                 state_str = "✅ ON" if switch_on else "❌ OFF"
-                lines.append(f"• {name}: {state_str}")
+                device_lines.append(f"• {name}: {state_str}")
             except Exception:
-                lines.append(f"• {name}: ⚠️ (недоступно)")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                device_lines.append(f"• {name}: ⚠️ (недоступно)")
+        
+        if not device_lines:
+            return ""
+        
+        header = "📱 <b>Tuya</b>"
+        content = "\n".join(device_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to get Tuya devices: {exc}")
         return ""
@@ -240,7 +247,7 @@ def turn_off_tuya_devices(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["\n🔌 Вимикаю Tuya устройства:"]
+        action_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -248,10 +255,16 @@ def turn_off_tuya_devices(token: str) -> str:
                 continue
             try:
                 tuya.turn_device_off(token, dev_id)
-                lines.append(f"  ✓ {name} вимкнено")
+                action_lines.append(f"✓ {name} вимкнено")
             except Exception as exc:
-                lines.append(f"  ✗ {name} - помилка: {exc}")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                action_lines.append(f"✗ {name} - помилка: {exc}")
+        
+        if not action_lines:
+            return ""
+        
+        header = "<b>🔌 Вимикаю Tuya пристрої:</b>"
+        content = "\n".join(action_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to turn off devices: {exc}")
         return ""
@@ -264,7 +277,7 @@ def turn_on_tuya_devices(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["\n🔌 Вмикаю Tuya устройства:"]
+        action_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -272,10 +285,16 @@ def turn_on_tuya_devices(token: str) -> str:
                 continue
             try:
                 tuya.send_device_command(token, dev_id, [{"code": "switch_1", "value": True}])
-                lines.append(f"  ✓ {name} увімкнено")
+                action_lines.append(f"✓ {name} увімкнено")
             except Exception as exc:
-                lines.append(f"  ✗ {name} - помилка: {exc}")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                action_lines.append(f"✗ {name} - помилка: {exc}")
+        
+        if not action_lines:
+            return ""
+        
+        header = "<b>🔌 Вмикаю Tuya пристрої:</b>"
+        content = "\n".join(action_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to turn on devices: {exc}")
         return ""
@@ -733,43 +752,50 @@ def main() -> int:
                     previous_state = grid_up
                 elif grid_up != previous_state:
                     # Стан мережі змінився -> формуємо алерт+повний статус
-                    if grid_up:
-                        header = "✅ Мережу відновлено"
-                        tuya_action = ""
-                        # Turn on Tuya devices if configured
-                        if TUYA_TURN_ON_ON_GRID_BACK and TUYA_AVAILABLE:
-                            tuya_token = get_tuya_token()
-                            if tuya_token:
-                                tuya_action = turn_on_tuya_devices(tuya_token)
-                    else:
-                        header = (
-                            "⚠️ Мережа зникла!\n"
-                            "‼️ Увага: будь ласка, не користуйтеся духовкою, "
-                            "пральною машиною, електрочайником та іншими потужними приладами."
-                        )
-                        # Turn off Tuya devices if configured
-                        tuya_action = ""
-                        if TUYA_TURN_OFF_ON_POWER_LOSS and TUYA_AVAILABLE:
-                            tuya_token = get_tuya_token()
-                            if tuya_token:
-                                tuya_action = turn_off_tuya_devices(tuya_token)
-
-                    # повний статус, той самий, що й на /status
-                    status_text = build_status_text()
-                    alert_text = f"{header}\n\n{status_text}{tuya_action}"
-
-                    # Куди слати:
-                    # 1) TELEGRAM_CHAT_ID з env, якщо задано
-                    # 2) або останній чат, звідки приходила команда
                     target_chat = CHAT_ID or last_command_chat_id
+                    
                     if target_chat is None:
                         print(
                             "Стан мережі змінився, але немає TELEGRAM_CHAT_ID "
                             "і ще жодного чату з командами – нікуди слати алерт."
                         )
                     else:
+                        # Обробити Tuya дії ПЕРШИМИ і відправити їх
+                        if grid_up:
+                            header = "✅ Мережу відновлено"
+                            # Turn on Tuya devices if configured
+                            if TUYA_TURN_ON_ON_GRID_BACK and TUYA_AVAILABLE:
+                                tuya_token = get_tuya_token()
+                                if tuya_token:
+                                    tuya_action = turn_on_tuya_devices(tuya_token)
+                                    if tuya_action:
+                                        try:
+                                            send_message(target_chat, tuya_action)
+                                        except Exception as exc:  # noqa: BLE001
+                                            print(f"Failed to send tuya action: {exc}")
+                        else:
+                            header = (
+                                "⚠️ Мережа зникла!\n"
+                                "‼️ Увага: будь ласка, не користуйтеся духовкою, "
+                                "пральною машиною, електрочайником та іншими потужними приладами."
+                            )
+                            # Turn off Tuya devices if configured
+                            if TUYA_TURN_OFF_ON_POWER_LOSS and TUYA_AVAILABLE:
+                                tuya_token = get_tuya_token()
+                                if tuya_token:
+                                    tuya_action = turn_off_tuya_devices(tuya_token)
+                                    if tuya_action:
+                                        try:
+                                            send_message(target_chat, tuya_action)
+                                        except Exception as exc:  # noqa: BLE001
+                                            print(f"Failed to send tuya action: {exc}")
+
+                        # Потім відправити повний статус зі заголовком
+                        status_text = build_status_text()
+                        alert_text = f"{header}\n\n{status_text}"
+
                         try:
-                            send_message(target_chat, alert_text)
+                            send_message(target_chat, alert_text, buttons=get_status_buttons())
                         except Exception as exc:  # noqa: BLE001
                             print(f"Failed to send grid alert: {exc}")
 
