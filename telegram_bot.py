@@ -86,8 +86,8 @@ def get_status_buttons() -> Dict[str, Any]:
     }
 
 
-def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> None:
-    """Edit an existing message via Telegram bot API."""
+def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> bool:
+    """Edit an existing message via Telegram bot API. Returns True if successful."""
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
 
@@ -112,11 +112,17 @@ def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode
             context=UNVERIFIED_CTX,
         ) as resp:
             body = resp.read().decode("utf-8")
-            data = json.loads(body)
-            if not data.get("ok"):
-                print(f"Edit message failed: {data}")
+            result = json.loads(body)
+            if not result.get("ok"):
+                error_desc = result.get("description", "")
+                # Ignore "message is not modified" error - content is the same
+                if "message is not modified" not in error_desc.lower():
+                    print(f"Edit message failed: {result}")
+                    return False
+            return True
     except Exception as exc:
         print(f"Edit message error: {exc}")
+        return False
 
 
 def answer_callback_query(callback_id: str, text: str = "", show_alert: bool = False) -> None:
@@ -478,12 +484,12 @@ def build_status_text() -> str:
         if tuya_token:
             tuya_status = get_tuya_devices_status(tuya_token)
             if tuya_status:
-                parts.append(tuya_status)
+                parts.append("\n" + tuya_status)
 
     # Electricity schedule
     schedule_text = get_electricity_schedule()
     if schedule_text:
-        parts.append(schedule_text)
+        parts.append("\n" + schedule_text)
     
     # Timestamp
     parts.append(f"<i>Останнє оновлення: {ts or 'невідомо'}</i>")
@@ -740,10 +746,14 @@ def main() -> int:
                         status_text = build_status_text()
                         # Edit existing message with new status
                         if msg_id:
-                            edit_message_text(callback_chat_id, msg_id, status_text, buttons=get_status_buttons())
+                            success = edit_message_text(callback_chat_id, msg_id, status_text, buttons=get_status_buttons())
+                            if success:
+                                answer_callback_query(callback_id, "✅ Оновлено")
+                            else:
+                                answer_callback_query(callback_id, "Дані не змінились")
                         else:
                             send_message(callback_chat_id, status_text, buttons=get_status_buttons())
-                        answer_callback_query(callback_id, "✅ Оновлено")
+                            answer_callback_query(callback_id, "✅ Оновлено")
                     except Exception as exc:  # noqa: BLE001
                         print(f"Failed to refresh status: {exc}")
                         answer_callback_query(callback_id, "❌ Помилка оновлення", show_alert=True)
