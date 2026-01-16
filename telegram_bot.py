@@ -208,7 +208,8 @@ def get_tuya_devices_status(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["📱 <b>Tuya</b>"]
+        
+        device_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -223,10 +224,16 @@ def get_tuya_devices_status(token: str) -> str:
                         switch_on = item.get("value", False)
                         break
                 state_str = "✅ ON" if switch_on else "❌ OFF"
-                lines.append(f"• {name}: {state_str}")
+                device_lines.append(f"• {name}: {state_str}")
             except Exception:
-                lines.append(f"• {name}: ⚠️ (недоступно)")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                device_lines.append(f"• {name}: ⚠️ (недоступно)")
+        
+        if not device_lines:
+            return ""
+        
+        header = "📱 <b>Tuya</b>"
+        content = "\n".join(device_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to get Tuya devices: {exc}")
         return ""
@@ -240,7 +247,7 @@ def turn_off_tuya_devices(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["\n🔌 Вимикаю Tuya устройства:"]
+        action_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -248,10 +255,16 @@ def turn_off_tuya_devices(token: str) -> str:
                 continue
             try:
                 tuya.turn_device_off(token, dev_id)
-                lines.append(f"  ✓ {name} вимкнено")
+                action_lines.append(f"✓ {name} вимкнено")
             except Exception as exc:
-                lines.append(f"  ✗ {name} - помилка: {exc}")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                action_lines.append(f"✗ {name} - помилка: {exc}")
+        
+        if not action_lines:
+            return ""
+        
+        header = "<b>🔌 Вимикаю Tuya пристрої:</b>"
+        content = "\n".join(action_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to turn off devices: {exc}")
         return ""
@@ -264,7 +277,7 @@ def turn_on_tuya_devices(token: str) -> str:
         devices = tuya.list_devices(token)
         if not devices:
             return ""
-        lines = ["\n🔌 Вмикаю Tuya устройства:"]
+        action_lines = []
         for dev in devices:
             dev_id = dev.get("id")
             name = dev.get("name", dev_id)
@@ -272,10 +285,16 @@ def turn_on_tuya_devices(token: str) -> str:
                 continue
             try:
                 tuya.send_device_command(token, dev_id, [{"code": "switch_1", "value": True}])
-                lines.append(f"  ✓ {name} увімкнено")
+                action_lines.append(f"✓ {name} увімкнено")
             except Exception as exc:
-                lines.append(f"  ✗ {name} - помилка: {exc}")
-        return "\n".join(lines) if len(lines) > 1 else ""
+                action_lines.append(f"✗ {name} - помилка: {exc}")
+        
+        if not action_lines:
+            return ""
+        
+        header = "<b>🔌 Вмикаю Tuya пристрої:</b>"
+        content = "\n".join(action_lines)
+        return f"{header}\n{content}"
     except Exception as exc:
         print(f"Failed to turn on devices: {exc}")
         return ""
