@@ -360,43 +360,55 @@ def get_electricity_schedule() -> str:
         if not data or len(data) == 0:
             return ""
         
-        # Get today's schedule
-        today = data[0]
-        event_date = today.get('eventDate', '')
-        queues = today.get('queues', {}).get(QUEUE_NUMBER, [])
-        
-        if len(queues) == 0:
-            return f"📅 <b>Графік відключень</b> <code>({event_date})</code>\n✅ Відключень не заплановано"
-        
-        schedule_lines = []
-        
-        # Check current time to mark active outages
+        # Check current time
         now = datetime.now(EET)
         
-        for slot in queues:
-            shutdown_hours = slot.get('shutdownHours', '')
-            from_time = slot.get('from', '')
-            to_time = slot.get('to', '')
-            
-            # Check if outage is active now
-            try:
-                from_hour, from_min = map(int, from_time.split(':'))
-                to_hour, to_min = map(int, to_time.split(':'))
-                from_dt = datetime(now.year, now.month, now.day, from_hour, from_min)
-                to_dt = datetime(now.year, now.month, now.day, to_hour, to_min)
-                
-                if from_dt <= now <= to_dt:
-                    schedule_lines.append(f"🔴 {shutdown_hours} (ЗАРАЗ)")
-                elif now < from_dt:
-                    schedule_lines.append(f"⏰ {shutdown_hours}")
-                else:
-                    schedule_lines.append(f"✓ {shutdown_hours}")
-            except:
-                schedule_lines.append(f"⚠️ {shutdown_hours}")
+        all_sections = []
         
-        schedule_text = "<code>" + "\n".join(schedule_lines) + "</code>"
-        header = f"📅 <b>Графік відключень</b> <code>({event_date})</code>"
-        return f"{header}\n{schedule_text}"
+        # Process up to 2 days
+        for day_data in data[:2]:
+            event_date = day_data.get('eventDate', '')
+            queues = day_data.get('queues', {}).get(QUEUE_NUMBER, [])
+            
+            # Parse eventDate (format: "18.01.2026")
+            try:
+                day, month, year = map(int, event_date.split('.'))
+                event_datetime = datetime(year, month, day, tzinfo=EET)
+            except:
+                event_datetime = datetime(now.year, now.month, now.day, tzinfo=EET)
+            
+            if len(queues) == 0:
+                section = f"📅 <b>{event_date}</b>\n✅ Відключень не заплановано"
+            else:
+                schedule_lines = []
+                
+                for slot in queues:
+                    shutdown_hours = slot.get('shutdownHours', '')
+                    from_time = slot.get('from', '')
+                    to_time = slot.get('to', '')
+                    
+                    # Check if outage is active now
+                    try:
+                        from_hour, from_min = map(int, from_time.split(':'))
+                        to_hour, to_min = map(int, to_time.split(':'))
+                        from_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, from_hour, from_min, tzinfo=EET)
+                        to_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, to_hour, to_min, tzinfo=EET)
+                        
+                        if from_dt <= now <= to_dt:
+                            schedule_lines.append(f"🔴 {shutdown_hours} (ЗАРАЗ)")
+                        elif now < from_dt:
+                            schedule_lines.append(f"⏰ {shutdown_hours}")
+                        else:
+                            schedule_lines.append(f"✓ {shutdown_hours}")
+                    except:
+                        schedule_lines.append(f"⚠️ {shutdown_hours}")
+                
+                schedule_text = "<code>" + "\n".join(schedule_lines) + "</code>"
+                section = f"📅 <b>{event_date}</b>\n{schedule_text}"
+            
+            all_sections.append(section)
+        
+        return "\n\n".join(all_sections)
     
     except Exception as e:
         print(f"Failed to fetch electricity schedule: {e}")
@@ -569,6 +581,13 @@ def build_schedule_text() -> str:
             
             parts.append(f"📆 {event_date}")
             
+            # Parse eventDate (format: "18.01.2026")
+            try:
+                day, month, year = map(int, event_date.split('.'))
+                event_datetime = datetime(year, month, day, tzinfo=EET)
+            except:
+                event_datetime = datetime(now.year, now.month, now.day, tzinfo=EET)
+            
             if len(queues) == 0:
                 parts.append("  ✅ Відключень не заплановано\n")
             else:
@@ -581,8 +600,8 @@ def build_schedule_text() -> str:
                     try:
                         from_hour, from_min = map(int, from_time.split(':'))
                         to_hour, to_min = map(int, to_time.split(':'))
-                        from_dt = datetime(now.year, now.month, now.day, from_hour, from_min)
-                        to_dt = datetime(now.year, now.month, now.day, to_hour, to_min)
+                        from_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, from_hour, from_min, tzinfo=EET)
+                        to_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, to_hour, to_min, tzinfo=EET)
                         
                         duration = (to_hour * 60 + to_min) - (from_hour * 60 + from_min)
                         hours = duration // 60

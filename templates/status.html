@@ -793,37 +793,48 @@
         // Update queue number badge
         document.getElementById('queueNumberBadge').textContent = 'Queue: ' + queueNum;
         
-        // Display compact schedule for today
+        // Display compact schedule for up to 2 days
         const scheduleCompact = document.getElementById('scheduleTodayCompact');
         let compactHTML = '';
         
-        // Get today's data (first entry)
-        const todaySchedule = data[0];
-        if (todaySchedule) {
-          const eventDate = todaySchedule.eventDate;
-          const queues = todaySchedule.queues[queueNum] || [];
+        const now = new Date();
+        
+        // Process up to 2 days
+        const daysToShow = data.slice(0, 2);
+        daysToShow.forEach((daySchedule, dayIndex) => {
+          const eventDate = daySchedule.eventDate;
+          const queues = daySchedule.queues[queueNum] || [];
+          
+          // Parse eventDate (format: "18.01.2026")
+          const [day, month, year] = eventDate.split('.').map(Number);
+          const eventDateTime = new Date(year, month - 1, day);
+          
+          // Add day separator if showing multiple days
+          if (dayIndex > 0) {
+            compactHTML += `<div style="margin:20px 0;border-top:1px solid var(--border);padding-top:16px;"></div>`;
+          }
+          
+          compactHTML += `<div style="margin-bottom:8px;font-size:14px;font-weight:700;color:var(--muted);">${eventDate}</div>`;
           
           if (queues.length === 0) {
-            compactHTML = `
+            compactHTML += `
               <div class="item" style="background:rgba(124,209,79,0.08);border-color:rgba(124,209,79,0.3);padding:16px;">
                 <div style="display:flex;align-items:center;gap:12px;">
                   <i class="bi bi-check-circle-fill" style="color:#7cd14f;font-size:28px;"></i>
                   <div>
-                    <div style="font-size:16px;color:var(--text);font-weight:700;">No scheduled outages today</div>
-                    <div style="font-size:13px;color:var(--muted);margin-top:4px;">${eventDate}</div>
+                    <div style="font-size:16px;color:var(--text);font-weight:700;">No scheduled outages</div>
                   </div>
                 </div>
               </div>
             `;
           } else {
-            compactHTML = `<div style="display:grid;gap:10px;">`;
+            compactHTML += `<div style="display:grid;gap:10px;">`;
             queues.forEach((slot) => {
               const duration = calculateDuration(slot.from, slot.to);
-              const now = new Date();
               const [fromHour, fromMin] = slot.from.split(':').map(Number);
               const [toHour, toMin] = slot.to.split(':').map(Number);
-              const fromTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), fromHour, fromMin);
-              const toTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), toHour, toMin);
+              const fromTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), fromHour, fromMin);
+              const toTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), toHour, toMin);
               const isActive = now >= fromTime && now <= toTime;
               const isPending = now < fromTime;
               
@@ -845,7 +856,7 @@
             });
             compactHTML += `</div>`;
           }
-        }
+        });
         
         scheduleCompact.innerHTML = compactHTML;
         
