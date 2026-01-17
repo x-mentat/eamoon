@@ -126,12 +126,12 @@ async def collect_once(inverter: AsyncISolar) -> None:
     ):
         raise RuntimeError("No valid register data returned from inverter")
 
-    save_reading(DB_PATH, payload, None)
+    save_reading(None, payload, None)
     logger.info("Saved inverter reading")
 
 
 async def run_forever() -> None:
-    init_db(DB_PATH)
+    init_db()
 
     def _new_inverter() -> AsyncISolar:
         local_ip = _resolve_local_ip()
@@ -166,7 +166,7 @@ async def run_forever() -> None:
                 MAX_CONSECUTIVE_ERRORS,
                 exc,
             )
-            save_reading(DB_PATH, None, str(exc))
+            save_reading(None, None, str(exc))
 
             # Якщо надто багато фейлів підряд — валимося, хай systemd рестартане сервіс.
             if failure_count >= MAX_CONSECUTIVE_ERRORS:

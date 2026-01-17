@@ -443,7 +443,7 @@ def get_electricity_schedule() -> str:
 
 def build_status_text() -> str:
     """Текст для /status — мережа + споживання + батарея."""
-    payload, error, ts = get_latest_reading(DB_PATH)
+    payload, error, ts = get_latest_reading()
 
     if error:
         return f"Статус недоступний: {error}"
@@ -537,7 +537,7 @@ def build_status_text() -> str:
 
 def build_battery_text() -> str:
     """Текст для /battery — детальний статус батареї."""
-    payload, error, ts = get_latest_reading(DB_PATH)
+    payload, error, ts = get_latest_reading()
 
     if error:
         return f"Статус батареї недоступний: {error}"
@@ -813,7 +813,7 @@ def main() -> int:
         # --- 2) Періодична перевірка мережі + автопостинг ---
         now = time.time()
         if now - last_grid_check >= POLL_INTERVAL:
-            payload, error, ts = get_latest_reading(DB_PATH)
+            payload, error, ts = get_latest_reading()
             if payload and not error:
                 # тут, якщо все N/A, is_grid_up поверне False (бо to_float -> None)
                 grid_up = is_grid_up(payload)

@@ -28,13 +28,13 @@ INVERTER_MODEL = os.getenv("INVERTER_MODEL", "ISOLAR_SMG_II_11K")
 QUEUE_NUMBER = os.getenv("QUEUE_NUMBER", "5.2")
 
 # Ensure the DB exists so the UI can show helpful messaging even before data arrives.
-init_db(DB_PATH)
+init_db()
 
 
 @app.route("/")
 def home():
     """Serve the main status dashboard."""
-    data, error, updated_at = get_latest_reading(DB_PATH)
+    data, error, updated_at = get_latest_reading()
     status_error: Optional[str] = error
     if not data and not error:
         status_error = "No data yet; start modbus_service.py to collect readings."
@@ -56,11 +56,11 @@ def history():
     if days_param:
         try:
             days = float(days_param)
-            readings = get_readings_since(DB_PATH, days=days)
+            readings = get_readings_since(days=days)
         except (ValueError, TypeError):
-            readings = get_recent_readings(DB_PATH, limit=200)
+            readings = get_recent_readings(limit=200)
     else:
-        readings = get_recent_readings(DB_PATH, limit=200)
+        readings = get_recent_readings(limit=200)
     return jsonify(readings)
 
 
