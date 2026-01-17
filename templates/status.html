@@ -814,7 +814,35 @@
             compactHTML += `<div style="margin:20px 0;border-top:1px solid var(--border);padding-top:16px;"></div>`;
           }
           
-          compactHTML += `<div style="margin-bottom:8px;font-size:14px;font-weight:700;color:var(--muted);">${eventDate}</div>`;
+          // Calculate total outage duration for the day
+          let totalMinutes = 0;
+          queues.forEach((slot) => {
+            const [fromHour, fromMin] = slot.from.split(':').map(Number);
+            const [toHour, toMin] = slot.to.split(':').map(Number);
+            let fromMinutes = fromHour * 60 + fromMin;
+            let toMinutes = toHour * 60 + toMin;
+            
+            // Handle times spanning midnight
+            if (toMinutes <= fromMinutes) {
+              toMinutes += 24 * 60;
+            }
+            
+            totalMinutes += toMinutes - fromMinutes;
+          });
+          
+          // Format total duration
+          const totalHours = Math.floor(totalMinutes / 60);
+          const totalMins = totalMinutes % 60;
+          let durationStr = '';
+          if (totalHours > 0 && totalMins > 0) {
+            durationStr = ` (Total: ${totalHours}h ${totalMins}m)`;
+          } else if (totalHours > 0) {
+            durationStr = ` (Total: ${totalHours}h)`;
+          } else if (totalMins > 0) {
+            durationStr = ` (Total: ${totalMins}m)`;
+          }
+          
+          compactHTML += `<div style="margin-bottom:8px;font-size:14px;font-weight:700;color:var(--muted);">${eventDate}${durationStr}</div>`;
           
           if (queues.length === 0) {
             compactHTML += `

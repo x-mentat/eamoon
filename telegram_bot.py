@@ -381,11 +381,27 @@ def get_electricity_schedule() -> str:
                 section = f"📅 <b>{event_date}</b>\n✅ Відключень не заплановано"
             else:
                 schedule_lines = []
+                total_minutes = 0
                 
                 for slot in queues:
                     shutdown_hours = slot.get('shutdownHours', '')
                     from_time = slot.get('from', '')
                     to_time = slot.get('to', '')
+                    
+                    # Calculate duration for summary
+                    try:
+                        from_hour, from_min = map(int, from_time.split(':'))
+                        to_hour, to_min = map(int, to_time.split(':'))
+                        from_minutes = from_hour * 60 + from_min
+                        to_minutes = to_hour * 60 + to_min
+                        
+                        # Handle times spanning midnight
+                        if to_minutes <= from_minutes:
+                            to_minutes += 24 * 60
+                        
+                        total_minutes += to_minutes - from_minutes
+                    except:
+                        pass
                     
                     # Check if outage is active now
                     try:
@@ -403,8 +419,18 @@ def get_electricity_schedule() -> str:
                     except:
                         schedule_lines.append(f"⚠️ {shutdown_hours}")
                 
+                # Format total duration
+                total_hours = total_minutes // 60
+                total_mins = total_minutes % 60
+                if total_hours > 0 and total_mins > 0:
+                    duration_str = f"{total_hours}г {total_mins}хв"
+                elif total_hours > 0:
+                    duration_str = f"{total_hours}г"
+                else:
+                    duration_str = f"{total_mins}хв"
+                
                 schedule_text = "<code>" + "\n".join(schedule_lines) + "</code>"
-                section = f"📅 <b>{event_date}</b>\n{schedule_text}"
+                section = f"📅 <b>{event_date}</b> (Всього: {duration_str})\n{schedule_text}"
             
             all_sections.append(section)
         
