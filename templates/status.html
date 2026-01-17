@@ -834,7 +834,13 @@
               const [fromHour, fromMin] = slot.from.split(':').map(Number);
               const [toHour, toMin] = slot.to.split(':').map(Number);
               const fromTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), fromHour, fromMin);
-              const toTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), toHour, toMin);
+              let toTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), toHour, toMin);
+              
+              // Handle times spanning midnight (e.g., 21:00-00:00)
+              if (toHour < fromHour || (toHour === 0 && fromHour > 0)) {
+                toTime = new Date(toTime.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+              }
+              
               const isActive = now >= fromTime && now <= toTime;
               const isPending = now < fromTime;
               
