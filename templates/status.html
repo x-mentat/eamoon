@@ -875,7 +875,13 @@
       const [fromHour, fromMin] = from.split(':').map(Number);
       const [toHour, toMin] = to.split(':').map(Number);
       const fromMinutes = fromHour * 60 + fromMin;
-      const toMinutes = toHour * 60 + toMin;
+      let toMinutes = toHour * 60 + toMin;
+      
+      // Handle times spanning midnight (e.g., 21:00-00:00)
+      if (toMinutes <= fromMinutes) {
+        toMinutes += 24 * 60; // Add 24 hours
+      }
+      
       const duration = toMinutes - fromMinutes;
       const hours = Math.floor(duration / 60);
       const minutes = duration % 60;
