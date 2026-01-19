@@ -37,6 +37,7 @@ else:
 
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
+SCHEDULE_SNAPSHOT_PATH = os.getenv("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
 
 
 # ------------- Helpers -------------
@@ -84,6 +85,110 @@ def get_status_buttons() -> Dict[str, Any]:
             ],
         ]
     }
+
+
+def _load_schedule_snapshot() -> Dict[str, Any]:
+    """Load stored schedule snapshot from disk."""
+    if not os.path.exists(SCHEDULE_SNAPSHOT_PATH):
+        return {}
+    try:
+        with open(SCHEDULE_SNAPSHOT_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_schedule_snapshot(snapshot: Dict[str, Any]) -> None:
+    """Persist schedule snapshot to disk."""
+    try:
+        with open(SCHEDULE_SNAPSHOT_PATH, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        print(f"Failed to save schedule snapshot: {exc}")
+
+
+def _format_minutes(total_minutes: int) -> str:
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    if hours > 0 and minutes > 0:
+        return f"{hours}г {minutes}хв"
+    if hours > 0:
+        return f"{hours}г"
+    return f"{minutes}хв"
+
+
+def _total_minutes_for_day(queues: List[Dict[str, Any]]) -> int:
+    total = 0
+    for slot in queues:
+        try:
+            from_time = slot.get("from", "00:00")
+            to_time = slot.get("to", "00:00")
+            from_hour, from_min = map(int, from_time.split(":"))
+            to_hour, to_min = map(int, to_time.split(":"))
+            start = from_hour * 60 + from_min
+            end = to_hour * 60 + to_min
+            if end <= start:
+                end += 24 * 60
+            total += end - start
+        except Exception:
+            continue
+    return total
+
+
+def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
+    """Detect daily schedule changes and send Telegram alert once per change."""
+    if not CHAT_ID or not BOT_TOKEN:
+        return
+
+    current_snapshot: Dict[str, Any] = {}
+    for day in raw_data:
+        event_date = day.get("eventDate")
+        if not event_date:
+            continue
+        queues = day.get("queues", {}).get(QUEUE_NUMBER, [])
+        current_snapshot[event_date] = {
+            "queues": queues,
+            "createdAt": day.get("createdAt"),
+            "scheduleApprovedSince": day.get("scheduleApprovedSince"),
+        }
+
+    previous_snapshot = _load_schedule_snapshot()
+
+    # On first run, just store the snapshot without notifying.
+    if not previous_snapshot:
+        _save_schedule_snapshot(current_snapshot)
+        return
+
+    changed_days: List[str] = []
+
+    # Check for changed or new dates
+    for event_date, payload in current_snapshot.items():
+        if previous_snapshot.get(event_date) != payload:
+            changed_days.append(event_date)
+
+    # Check for removed dates
+    for event_date in previous_snapshot.keys():
+        if event_date not in current_snapshot:
+            changed_days.append(event_date)
+
+    if not changed_days:
+        return
+
+    # Compose alert message
+    changed_days_sorted = sorted(set(changed_days))
+    lines = ["⚠️ Графік відключень оновлено"]
+    for day in changed_days_sorted:
+        queues = current_snapshot.get(day, {}).get("queues", [])
+        total_minutes = _total_minutes_for_day(queues)
+        duration_str = _format_minutes(total_minutes) if total_minutes > 0 else "—"
+        lines.append(f"📅 {day}: новий графік (всього {duration_str})")
+
+    try:
+        send_message(CHAT_ID, "\n".join(lines))
+    except Exception as exc:
+        print(f"Failed to send schedule change notification: {exc}")
+    finally:
+        _save_schedule_snapshot(current_snapshot)
 
 
 def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> bool:
@@ -356,6 +461,12 @@ def get_electricity_schedule() -> str:
         
         with urllib.request.urlopen(req, timeout=10, context=UNVERIFIED_CTX) as response:
             data = json.loads(response.read().decode('utf-8'))
+
+        # Notify if schedule changed compared to stored snapshot
+        try:
+            _notify_schedule_changes_if_needed(data)
+        except Exception as exc:
+            print(f"Schedule change detection failed: {exc}")
         
         if not data or len(data) == 0:
             return ""
