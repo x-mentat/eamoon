@@ -35,6 +35,8 @@ if BOT_TOKEN:
 else:
     API_URL = ""
 
+SCHEDULE_CHECK_INTERVAL = int(os.getenv("SCHEDULE_CHECK_INTERVAL_MINUTES", "10")) * 60
+
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
 SCHEDULE_SNAPSHOT_PATH = os.getenv("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
@@ -189,6 +191,23 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
         print(f"Failed to send schedule change notification: {exc}")
     finally:
         _save_schedule_snapshot(current_snapshot)
+
+
+def _check_schedule_updates_periodic() -> None:
+    """Poll schedule API and notify if it changed."""
+    try:
+        url = f"https://be-svitlo.oe.if.ua/schedule-by-queue?queue={QUEUE_NUMBER}"
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+        req.add_header('Accept', 'application/json, text/plain, */*')
+
+        with urllib.request.urlopen(req, timeout=10, context=UNVERIFIED_CTX) as response:
+            data = json.loads(response.read().decode('utf-8'))
+
+        if data:
+            _notify_schedule_changes_if_needed(data)
+    except Exception as exc:
+        print(f"Periodic schedule check failed: {exc}")
 
 
 def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> bool:
@@ -826,6 +845,7 @@ def main() -> int:
     offset: Optional[int] = None
     previous_state: Optional[bool] = None
     last_grid_check = 0.0
+    last_schedule_check = 0.0
     last_command_chat_id: Optional[int | str] = None
 
     while True:
@@ -984,6 +1004,11 @@ def main() -> int:
                     previous_state = grid_up
 
             last_grid_check = now
+
+        # 3) Periodic schedule change polling (independent of user commands)
+        if now - last_schedule_check >= SCHEDULE_CHECK_INTERVAL:
+            _check_schedule_updates_periodic()
+            last_schedule_check = now
 
         time.sleep(1)
 
