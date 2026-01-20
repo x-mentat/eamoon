@@ -137,6 +137,31 @@ def _total_minutes_for_day(queues: List[Dict[str, Any]]) -> int:
     return total
 
 
+def _format_day_slots(queues: List[Dict[str, Any]]) -> List[str]:
+    """Format outage slots for human-friendly alert message."""
+    if not queues:
+        return ["  ✅ Без відключень"]
+
+    lines: List[str] = []
+    for slot in queues:
+        shutdown_hours = slot.get("shutdownHours", "")
+        from_time = slot.get("from", "")
+        to_time = slot.get("to", "")
+        try:
+            from_hour, from_min = map(int, from_time.split(":"))
+            to_hour, to_min = map(int, to_time.split(":"))
+            start = from_hour * 60 + from_min
+            end = to_hour * 60 + to_min
+            if end <= start:
+                end += 24 * 60
+            duration_minutes = end - start
+            duration_str = _format_minutes(duration_minutes)
+            lines.append(f"  • {shutdown_hours} ({duration_str})")
+        except Exception:
+            lines.append(f"  • {shutdown_hours}")
+    return lines
+
+
 def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
     """Detect daily schedule changes and send Telegram alert once per change."""
     if not CHAT_ID or not BOT_TOKEN:
@@ -184,6 +209,7 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
         total_minutes = _total_minutes_for_day(queues)
         duration_str = _format_minutes(total_minutes) if total_minutes > 0 else "—"
         lines.append(f"📅 {day}: новий графік (всього {duration_str})")
+        lines.extend(_format_day_slots(queues))
 
     try:
         send_message(CHAT_ID, "\n".join(lines))
