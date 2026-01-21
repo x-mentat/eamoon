@@ -188,9 +188,14 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
 
     changed_days: List[str] = []
 
-    # Check for changed or new dates
+    # Check for changed or new dates - compare only the queues, not metadata timestamps
     for event_date, payload in current_snapshot.items():
-        if previous_snapshot.get(event_date) != payload:
+        prev_payload = previous_snapshot.get(event_date)
+        if prev_payload is None:
+            # New date added
+            changed_days.append(event_date)
+        elif payload.get("queues") != prev_payload.get("queues"):
+            # Actual schedule changed
             changed_days.append(event_date)
 
     # Check for removed dates
