@@ -803,10 +803,23 @@
         const daysToShow = data.slice(0, 2);
         daysToShow.forEach((daySchedule, dayIndex) => {
           const eventDate = daySchedule.eventDate;
-          const queues = daySchedule.queues[queueNum] || [];
+          
+          // Safely get queues, handle missing queue number or missing data
+          let queues = [];
+          if (daySchedule.queues) {
+            queues = daySchedule.queues[queueNum] || daySchedule.queues[String(queueNum)] || [];
+          }
+          
+          // Skip if no valid event date
+          if (!eventDate) {
+            return;
+          }
           
           // Parse eventDate (format: "18.01.2026")
           const [day, month, year] = eventDate.split('.').map(Number);
+          if (!day || !month || !year) {
+            return;
+          }
           const eventDateTime = new Date(year, month - 1, day);
           
           // Add day separator if showing multiple days
@@ -817,17 +830,21 @@
           // Calculate total outage duration for the day
           let totalMinutes = 0;
           queues.forEach((slot) => {
-            const [fromHour, fromMin] = slot.from.split(':').map(Number);
-            const [toHour, toMin] = slot.to.split(':').map(Number);
-            let fromMinutes = fromHour * 60 + fromMin;
-            let toMinutes = toHour * 60 + toMin;
-            
-            // Handle times spanning midnight
-            if (toMinutes <= fromMinutes) {
-              toMinutes += 24 * 60;
+            try {
+              const [fromHour, fromMin] = slot.from.split(':').map(Number);
+              const [toHour, toMin] = slot.to.split(':').map(Number);
+              let fromMinutes = fromHour * 60 + fromMin;
+              let toMinutes = toHour * 60 + toMin;
+              
+              // Handle times spanning midnight
+              if (toMinutes <= fromMinutes) {
+                toMinutes += 24 * 60;
+              }
+              
+              totalMinutes += toMinutes - fromMinutes;
+            } catch (e) {
+              console.warn('Invalid slot time format:', slot);
             }
-            
-            totalMinutes += toMinutes - fromMinutes;
           });
           
           // Format total duration
@@ -858,35 +875,39 @@
           } else {
             compactHTML += `<div style="display:grid;gap:10px;">`;
             queues.forEach((slot) => {
-              const duration = calculateDuration(slot.from, slot.to);
-              const [fromHour, fromMin] = slot.from.split(':').map(Number);
-              const [toHour, toMin] = slot.to.split(':').map(Number);
-              const fromTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), fromHour, fromMin);
-              let toTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), toHour, toMin);
-              
-              // Handle times spanning midnight (e.g., 21:00-00:00)
-              if (toHour < fromHour || (toHour === 0 && fromHour > 0)) {
-                toTime = new Date(toTime.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
-              }
-              
-              const isActive = now >= fromTime && now <= toTime;
-              const isPending = now < fromTime;
-              
-              compactHTML += `
-                <div class="item" style="background:rgba(255,80,80,0.08);border-color:rgba(255,80,80,0.3);padding:14px;${isActive ? 'border:2px solid #ff5050;' : ''}">
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                      <i class="bi bi-${isActive ? 'power' : 'clock'}" style="color:#ff5050;font-size:24px;"></i>
-                      <div>
-                        <div style="font-size:16px;color:var(--text);font-weight:700;">${slot.shutdownHours}</div>
-                        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${duration}</div>
+              try {
+                const duration = calculateDuration(slot.from, slot.to);
+                const [fromHour, fromMin] = slot.from.split(':').map(Number);
+                const [toHour, toMin] = slot.to.split(':').map(Number);
+                const fromTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), fromHour, fromMin);
+                let toTime = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate(), toHour, toMin);
+                
+                // Handle times spanning midnight (e.g., 21:00-00:00)
+                if (toHour < fromHour || (toHour === 0 && fromHour > 0)) {
+                  toTime = new Date(toTime.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+                }
+                
+                const isActive = now >= fromTime && now <= toTime;
+                const isPending = now < fromTime;
+                
+                compactHTML += `
+                  <div class="item" style="background:rgba(255,80,80,0.08);border-color:rgba(255,80,80,0.3);padding:14px;${isActive ? 'border:2px solid #ff5050;' : ''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="bi bi-${isActive ? 'power' : 'clock'}" style="color:#ff5050;font-size:24px;"></i>
+                        <div>
+                          <div style="font-size:16px;color:var(--text);font-weight:700;">${slot.shutdownHours}</div>
+                          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${duration}</div>
+                        </div>
                       </div>
+                      ${isActive ? '<div style="padding:5px 14px;background:rgba(255,80,80,0.3);border-radius:999px;font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;"><i class="bi bi-exclamation-triangle-fill"></i> Active Now</div>' : ''}
+                      ${isPending ? '<div style="padding:5px 14px;background:rgba(255,206,86,0.2);border-radius:999px;font-size:11px;font-weight:600;color:#ffce56;text-transform:uppercase;">Upcoming</div>' : ''}
                     </div>
-                    ${isActive ? '<div style="padding:5px 14px;background:rgba(255,80,80,0.3);border-radius:999px;font-size:12px;font-weight:700;color:#fff;text-transform:uppercase;"><i class="bi bi-exclamation-triangle-fill"></i> Active Now</div>' : ''}
-                    ${isPending ? '<div style="padding:5px 14px;background:rgba(255,206,86,0.2);border-radius:999px;font-size:11px;font-weight:600;color:#ffce56;text-transform:uppercase;">Upcoming</div>' : ''}
                   </div>
-                </div>
-              `;
+                `;
+              } catch (e) {
+                console.warn('Failed to process slot:', slot, e);
+              }
             });
             compactHTML += `</div>`;
           }

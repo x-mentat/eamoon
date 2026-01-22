@@ -529,7 +529,13 @@ def get_electricity_schedule() -> str:
         # Process up to 2 days
         for day_data in data[:2]:
             event_date = day_data.get('eventDate', '')
-            queues = day_data.get('queues', {}).get(QUEUE_NUMBER, [])
+            
+            # Safely get queues, handle missing queue number
+            queues_dict = day_data.get('queues', {})
+            if not queues_dict:
+                queues = []
+            else:
+                queues = queues_dict.get(str(QUEUE_NUMBER), []) or queues_dict.get(QUEUE_NUMBER, [])
             
             # Parse eventDate (format: "18.01.2026")
             try:
@@ -538,7 +544,7 @@ def get_electricity_schedule() -> str:
             except:
                 event_datetime = datetime(now.year, now.month, now.day, tzinfo=EET)
             
-            if len(queues) == 0:
+            if not queues or len(queues) == 0:
                 section = f"📅 <b>{event_date}</b>\n✅ Відключень не заплановано"
             else:
                 schedule_lines = []
@@ -763,7 +769,18 @@ def build_schedule_text() -> str:
         # Process each day in schedule
         for day_data in data[:3]:  # Show max 3 days
             event_date = day_data.get('eventDate', '')
-            queues = day_data.get('queues', {}).get(QUEUE_NUMBER, [])
+            
+            # Skip if no event date
+            if not event_date:
+                continue
+            
+            # Safely get queues, handle missing queue number
+            queues_dict = day_data.get('queues', {})
+            if not queues_dict:
+                queues = []
+            else:
+                queues = queues_dict.get(str(QUEUE_NUMBER), []) or queues_dict.get(QUEUE_NUMBER, [])
+            
             created_at = day_data.get('createdAt', '')
             
             parts.append(f"📆 {event_date}")
@@ -775,13 +792,17 @@ def build_schedule_text() -> str:
             except:
                 event_datetime = datetime(now.year, now.month, now.day, tzinfo=EET)
             
-            if len(queues) == 0:
+            if not queues or len(queues) == 0:
                 parts.append("  ✅ Відключень не заплановано\n")
             else:
                 for slot in queues:
                     shutdown_hours = slot.get('shutdownHours', '')
                     from_time = slot.get('from', '')
                     to_time = slot.get('to', '')
+                    
+                    # Skip invalid slots
+                    if not shutdown_hours or not from_time or not to_time:
+                        continue
                     
                     # Check if outage is active now
                     try:
@@ -790,7 +811,14 @@ def build_schedule_text() -> str:
                         from_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, from_hour, from_min, tzinfo=EET)
                         to_dt = datetime(event_datetime.year, event_datetime.month, event_datetime.day, to_hour, to_min, tzinfo=EET)
                         
+                        # Handle times spanning midnight
+                        if to_dt <= from_dt:
+                            to_dt = to_dt.replace(day=to_dt.day + 1)
+                        
                         duration = (to_hour * 60 + to_min) - (from_hour * 60 + from_min)
+                        # Handle negative duration (midnight-spanning)
+                        if duration <= 0:
+                            duration += 24 * 60
                         hours = duration // 60
                         minutes = duration % 60
                         duration_str = f"{hours}г {minutes}хв" if hours > 0 else f"{minutes}хв"
