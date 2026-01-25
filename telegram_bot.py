@@ -162,10 +162,30 @@ def _format_day_slots(queues: List[Dict[str, Any]]) -> List[str]:
     return lines
 
 
+def _parse_event_date(event_date: str):
+    try:
+        return datetime.fromisoformat(event_date).date()
+    except Exception:
+        return None
+
+
+def _filter_future_or_today(snapshot: Dict[str, Any], today) -> Dict[str, Any]:
+    """Drop past dates to avoid false alerts about previous days."""
+    filtered: Dict[str, Any] = {}
+    for event_date, payload in snapshot.items():
+        parsed = _parse_event_date(event_date)
+        if parsed is not None and parsed < today:
+            continue
+        filtered[event_date] = payload
+    return filtered
+
+
 def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
     """Detect daily schedule changes and send Telegram alert once per change."""
     if not CHAT_ID or not BOT_TOKEN:
         return
+
+    today_eet = datetime.now(EET).date()
 
     current_snapshot: Dict[str, Any] = {}
     for day in raw_data:
@@ -179,7 +199,10 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
             "scheduleApprovedSince": day.get("scheduleApprovedSince"),
         }
 
+    current_snapshot = _filter_future_or_today(current_snapshot, today_eet)
+
     previous_snapshot = _load_schedule_snapshot()
+    previous_snapshot = _filter_future_or_today(previous_snapshot, today_eet)
 
     # On first run, just store the snapshot without notifying.
     if not previous_snapshot:
