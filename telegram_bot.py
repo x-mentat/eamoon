@@ -186,6 +186,7 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
         return
 
     today_eet = datetime.now(EET).date()
+    today_str = today_eet.isoformat()
 
     current_snapshot: Dict[str, Any] = {}
     for day in raw_data:
@@ -197,6 +198,7 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
             "queues": queues,
             "createdAt": day.get("createdAt"),
             "scheduleApprovedSince": day.get("scheduleApprovedSince"),
+            "notified": None,  # Will track when notification was sent
         }
 
     current_snapshot = _filter_future_or_today(current_snapshot, today_eet)
@@ -212,8 +214,16 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
     changed_days: List[str] = []
 
     # Check for changed or new dates - compare only the queues, not metadata timestamps
+    # Skip notification if already notified on the same date (prevents re-notification at midnight)
     for event_date, payload in current_snapshot.items():
         prev_payload = previous_snapshot.get(event_date)
+        
+        # If already notified today for this date, skip
+        if prev_payload and prev_payload.get("notified") == today_str:
+            # Preserve the notified flag
+            current_snapshot[event_date]["notified"] = today_str
+            continue
+            
         if prev_payload is None:
             # New date added
             changed_days.append(event_date)
@@ -241,6 +251,9 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
 
     try:
         send_message(CHAT_ID, "\n".join(lines))
+        # Mark these days as notified today
+        for day in changed_days_sorted:
+            current_snapshot[day]["notified"] = today_str
     except Exception as exc:
         print(f"Failed to send schedule change notification: {exc}")
     finally:
