@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import ssl
 import time
@@ -40,6 +41,20 @@ SCHEDULE_CHECK_INTERVAL = int(os.getenv("SCHEDULE_CHECK_INTERVAL_MINUTES", "10")
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
 SCHEDULE_SNAPSHOT_PATH = os.getenv("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
+SCHEDULE_LOG_PATH = os.getenv("SCHEDULE_LOG_PATH", "schedule_check.log")
+
+_schedule_logger = logging.getLogger("schedule_check")
+if not _schedule_logger.handlers:
+    _schedule_logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(SCHEDULE_LOG_PATH, encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handler.setFormatter(formatter)
+    _schedule_logger.addHandler(handler)
+    _schedule_logger.propagate = False
+
+
+def _schedule_log(message: str) -> None:
+    _schedule_logger.info(message)
 
 
 # ------------- Helpers -------------
@@ -166,6 +181,10 @@ def _parse_event_date(event_date: str):
     try:
         return datetime.fromisoformat(event_date).date()
     except Exception:
+        pass
+    try:
+        return datetime.strptime(event_date, "%d.%m.%Y").date()
+    except Exception:
         return None
 
 
@@ -178,6 +197,11 @@ def _filter_future_or_today(snapshot: Dict[str, Any], today) -> Dict[str, Any]:
             continue
         filtered[event_date] = payload
     return filtered
+
+
+def _is_past_date(event_date: str, today) -> bool:
+    parsed = _parse_event_date(event_date)
+    return parsed is not None and parsed < today
 
 
 def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
@@ -206,37 +230,52 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
     previous_snapshot = _load_schedule_snapshot()
     previous_snapshot = _filter_future_or_today(previous_snapshot, today_eet)
 
+    _schedule_log(
+        f"today={today_str} current_days={sorted(current_snapshot.keys())} prev_days={sorted(previous_snapshot.keys())}"
+    )
+
     # On first run, just store the snapshot without notifying.
     if not previous_snapshot:
+        _schedule_log("no previous snapshot, storing current without notifying")
         _save_schedule_snapshot(current_snapshot)
         return
 
     changed_days: List[str] = []
 
     # Check for changed or new dates - compare only the queues, not metadata timestamps
-    # Skip notification if already notified on the same date (prevents re-notification at midnight)
     for event_date, payload in current_snapshot.items():
         prev_payload = previous_snapshot.get(event_date)
-        
-        # If already notified today for this date, skip
-        if prev_payload and prev_payload.get("notified") == today_str:
-            # Preserve the notified flag
-            current_snapshot[event_date]["notified"] = today_str
+
+        if _is_past_date(event_date, today_eet):
+            _schedule_log(f"skip past date {event_date}")
             continue
-            
+
         if prev_payload is None:
             # New date added
+            _schedule_log(f"new date {event_date}")
             changed_days.append(event_date)
         elif payload.get("queues") != prev_payload.get("queues"):
             # Actual schedule changed
+            _schedule_log(f"queues changed for {event_date}")
+            _schedule_log(f"prev_queues={prev_payload.get('queues')}")
+            _schedule_log(f"curr_queues={payload.get('queues')}")
             changed_days.append(event_date)
+        else:
+            # Preserve previous notification marker when nothing changed
+            _schedule_log(f"no change for {event_date}")
+            current_snapshot[event_date]["notified"] = prev_payload.get("notified")
 
     # Check for removed dates
     for event_date in previous_snapshot.keys():
+        if _is_past_date(event_date, today_eet):
+            _schedule_log(f"skip past removed date {event_date}")
+            continue
         if event_date not in current_snapshot:
+            _schedule_log(f"date removed {event_date}")
             changed_days.append(event_date)
 
     if not changed_days:
+        _schedule_log("no changes detected")
         return
 
     # Compose alert message
