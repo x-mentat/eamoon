@@ -41,20 +41,21 @@ SCHEDULE_CHECK_INTERVAL = int(os.getenv("SCHEDULE_CHECK_INTERVAL_MINUTES", "10")
 # WARNING: вимикає перевірку TLS (як у твоєму середовищі на Windows)
 UNVERIFIED_CTX = ssl._create_unverified_context()
 SCHEDULE_SNAPSHOT_PATH = os.getenv("SCHEDULE_SNAPSHOT_PATH", "schedule_snapshot.json")
-SCHEDULE_LOG_PATH = os.getenv("SCHEDULE_LOG_PATH", "schedule_check.log")
+BOT_LOG_PATH = os.getenv("BOT_LOG_PATH") or os.getenv("SCHEDULE_LOG_PATH", "bot.log")
+BOT_LOG_LEVEL = os.getenv("BOT_LOG_LEVEL", "INFO").upper()
 
-_schedule_logger = logging.getLogger("schedule_check")
-if not _schedule_logger.handlers:
-    _schedule_logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(SCHEDULE_LOG_PATH, encoding="utf-8")
+logger = logging.getLogger("bot")
+if not logger.handlers:
+    logger.setLevel(getattr(logging, BOT_LOG_LEVEL, logging.INFO))
+    handler = logging.FileHandler(BOT_LOG_PATH, encoding="utf-8")
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     handler.setFormatter(formatter)
-    _schedule_logger.addHandler(handler)
-    _schedule_logger.propagate = False
+    logger.addHandler(handler)
+    logger.propagate = False
 
 
 def _schedule_log(message: str) -> None:
-    _schedule_logger.info(message)
+    logger.info(message)
 
 
 # ------------- Helpers -------------
@@ -121,7 +122,7 @@ def _save_schedule_snapshot(snapshot: Dict[str, Any]) -> None:
         with open(SCHEDULE_SNAPSHOT_PATH, "w", encoding="utf-8") as f:
             json.dump(snapshot, f, ensure_ascii=False, indent=2)
     except Exception as exc:
-        print(f"Failed to save schedule snapshot: {exc}")
+        logger.exception("Failed to save schedule snapshot")
 
 
 def _format_minutes(total_minutes: int) -> str:
@@ -294,7 +295,7 @@ def _notify_schedule_changes_if_needed(raw_data: List[Dict[str, Any]]) -> None:
         for day in changed_days_sorted:
             current_snapshot[day]["notified"] = today_str
     except Exception as exc:
-        print(f"Failed to send schedule change notification: {exc}")
+        logger.exception("Failed to send schedule change notification")
     finally:
         _save_schedule_snapshot(current_snapshot)
 
@@ -313,7 +314,7 @@ def _check_schedule_updates_periodic() -> None:
         if data:
             _notify_schedule_changes_if_needed(data)
     except Exception as exc:
-        print(f"Periodic schedule check failed: {exc}")
+        logger.exception("Periodic schedule check failed")
 
 
 def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode: str = "HTML", buttons: Optional[Dict[str, Any]] = None) -> bool:
@@ -347,11 +348,11 @@ def edit_message_text(chat_id: int | str, message_id: int, text: str, parse_mode
                 error_desc = result.get("description", "")
                 # Ignore "message is not modified" error - content is the same
                 if "message is not modified" not in error_desc.lower():
-                    print(f"Edit message failed: {result}")
+                    logger.warning("Edit message failed: %s", result)
                     return False
             return True
     except Exception as exc:
-        print(f"Edit message error: {exc}")
+        logger.exception("Edit message error")
         return False
 
 
@@ -379,7 +380,7 @@ def answer_callback_query(callback_id: str, text: str = "", show_alert: bool = F
             body = resp.read().decode("utf-8")
             json.loads(body)
     except Exception as exc:
-        print(f"Answer callback error: {exc}")
+        logger.exception("Answer callback error")
 
 
 def to_float(val: Any) -> Optional[float]:
@@ -434,7 +435,7 @@ def get_tuya_token() -> Optional[str]:
     try:
         return tuya.get_token()
     except Exception as exc:
-        print(f"Failed to get Tuya token: {exc}")
+        logger.exception("Failed to get Tuya token")
         return None
 
 
@@ -473,7 +474,7 @@ def get_tuya_devices_status(token: str) -> str:
         content = "\n".join(device_lines)
         return f"{header}\n{content}"
     except Exception as exc:
-        print(f"Failed to get Tuya devices: {exc}")
+        logger.exception("Failed to get Tuya devices")
         return ""
 
 
@@ -512,7 +513,7 @@ def turn_off_tuya_devices(token: str) -> str:
             result += f"\n\n{status_msg}"
         return result
     except Exception as exc:
-        print(f"Failed to turn off devices: {exc}")
+        logger.exception("Failed to turn off devices")
         return ""
 
 def turn_on_tuya_devices(token: str) -> str:
@@ -550,7 +551,7 @@ def turn_on_tuya_devices(token: str) -> str:
             result += f"\n\n{status_msg}"
         return result
     except Exception as exc:
-        print(f"Failed to turn on devices: {exc}")
+        logger.exception("Failed to turn on devices")
         return ""
 
 
@@ -591,7 +592,7 @@ def get_electricity_schedule() -> str:
         try:
             _notify_schedule_changes_if_needed(data)
         except Exception as exc:
-            print(f"Schedule change detection failed: {exc}")
+            logger.exception("Schedule change detection failed")
         
         if not data or len(data) == 0:
             return ""
@@ -679,7 +680,7 @@ def get_electricity_schedule() -> str:
         return "\n\n".join(all_sections)
     
     except Exception as e:
-        print(f"Failed to fetch electricity schedule: {e}")
+        logger.exception("Failed to fetch electricity schedule")
         return ""
 
 
@@ -939,11 +940,11 @@ def get_updates(offset: Optional[int]) -> List[Dict[str, Any]]:
             body = resp.read().decode("utf-8")
         data = json.loads(body)
     except Exception as exc:  # noqa: BLE001
-        print(f"getUpdates failed: {exc}")
+        logger.exception("getUpdates failed")
         return []
 
     if not data.get("ok"):
-        print(f"getUpdates returned not ok: {data}")
+        logger.warning("getUpdates returned not ok: %s", data)
         return []
 
     return data.get("result", [])
@@ -973,7 +974,7 @@ def extract_command(text: str) -> Optional[str]:
 
 def main() -> int:
     if not BOT_TOKEN:
-        print("Missing TELEGRAM_BOT_TOKEN in environment/.env")
+        logger.error("Missing TELEGRAM_BOT_TOKEN in environment/.env")
         return 1
 
     offset: Optional[int] = None
@@ -981,6 +982,46 @@ def main() -> int:
     last_grid_check = 0.0
     last_schedule_check = 0.0
     last_command_chat_id: Optional[int | str] = None
+
+    def handle_status(chat_id: int | str) -> None:
+        send_message(chat_id, build_status_text(), buttons=get_status_buttons())
+
+    def handle_battery(chat_id: int | str) -> None:
+        send_message(chat_id, build_battery_text())
+
+    def handle_schedule(chat_id: int | str) -> None:
+        send_message(chat_id, build_schedule_text())
+
+    def handle_chatid(chat_id: int | str) -> None:
+        send_message(chat_id, f"Ваш chat_id: {chat_id}")
+
+    def cb_refresh_status(callback_id: str, callback_chat_id: int | str, msg_id: Optional[int]) -> None:
+        status_text = build_status_text()
+        if msg_id:
+            success = edit_message_text(callback_chat_id, msg_id, status_text, buttons=get_status_buttons())
+            if success:
+                answer_callback_query(callback_id, "✅ Оновлено")
+            else:
+                answer_callback_query(callback_id, "Дані не змінились")
+        else:
+            send_message(callback_chat_id, status_text, buttons=get_status_buttons())
+            answer_callback_query(callback_id, "✅ Оновлено")
+
+    def cb_bot_menu(callback_id: str, callback_chat_id: int | str, msg_id: Optional[int]) -> None:
+        answer_callback_query(callback_id, "Меню")
+
+    COMMANDS = {
+        "/start": handle_status,
+        "/status": handle_status,
+        "/battery": handle_battery,
+        "/schedule": handle_schedule,
+        "/chatid": handle_chatid,
+    }
+
+    CALLBACKS = {
+        "refresh_status": cb_refresh_status,
+        "bot_menu": cb_bot_menu,
+    }
 
     while True:
         # --- 1) Обробка апдейтів / команд ---
@@ -1009,37 +1050,16 @@ def main() -> int:
             if chat_id is None:
                 continue
 
-            print(f"[UPDATE] chat_id={chat_id}, text={text!r}")
+            logger.info("[UPDATE] chat_id=%s, text=%r", chat_id, text)
 
             cmd = extract_command(text)
 
-            if cmd in ("/start", "/status"):
+            if cmd in COMMANDS:
                 last_command_chat_id = chat_id
                 try:
-                    send_message(chat_id, build_status_text(), buttons=get_status_buttons())
+                    COMMANDS[cmd](chat_id)
                 except Exception as exc:  # noqa: BLE001
-                    print(f"Failed to send status: {exc}")
-
-            elif cmd == "/battery":
-                last_command_chat_id = chat_id
-                try:
-                    send_message(chat_id, build_battery_text())
-                except Exception as exc:  # noqa: BLE001
-                    print(f"Failed to send battery status: {exc}")
-
-            elif cmd == "/schedule":
-                last_command_chat_id = chat_id
-                try:
-                    send_message(chat_id, build_schedule_text())
-                except Exception as exc:  # noqa: BLE001
-                    print(f"Failed to send schedule: {exc}")
-
-            elif cmd == "/chatid":
-                last_command_chat_id = chat_id
-                try:
-                    send_message(chat_id, f"Ваш chat_id: {chat_id}")
-                except Exception as exc:  # noqa: BLE001
-                    print(f"Failed to send chat_id: {exc}")
+                    logger.exception("Failed to handle command %s", cmd)
             
             # Handle callback queries (button clicks)
             callback_query = upd.get("callback_query")
@@ -1049,31 +1069,14 @@ def main() -> int:
                 callback_chat_id = callback_query.get("from", {}).get("id")
                 msg_id = callback_query.get("message", {}).get("message_id")
                 
-                print(f"[CALLBACK] chat_id={callback_chat_id}, data={callback_data}, msg_id={msg_id}")
-                
-                if callback_data == "refresh_status" and callback_chat_id:
+                logger.info("[CALLBACK] chat_id=%s, data=%s, msg_id=%s", callback_chat_id, callback_data, msg_id)
+
+                if callback_data in CALLBACKS and callback_chat_id:
                     try:
-                        status_text = build_status_text()
-                        # Edit existing message with new status
-                        if msg_id:
-                            success = edit_message_text(callback_chat_id, msg_id, status_text, buttons=get_status_buttons())
-                            if success:
-                                answer_callback_query(callback_id, "✅ Оновлено")
-                            else:
-                                answer_callback_query(callback_id, "Дані не змінились")
-                        else:
-                            send_message(callback_chat_id, status_text, buttons=get_status_buttons())
-                            answer_callback_query(callback_id, "✅ Оновлено")
+                        CALLBACKS[callback_data](callback_id, callback_chat_id, msg_id)
                     except Exception as exc:  # noqa: BLE001
-                        print(f"Failed to refresh status: {exc}")
-                        answer_callback_query(callback_id, "❌ Помилка оновлення", show_alert=True)
-                
-                elif callback_data == "bot_menu" and callback_chat_id:
-                    try:
-                        menu_text = "⚙️ <b>Меню бота</b>\n\n/status - Статус мережі\n/battery - Статус батареї\n/schedule - Графік відключень"
-                        answer_callback_query(callback_id, "Меню")
-                    except Exception as exc:  # noqa: BLE001
-                        print(f"Failed to show menu: {exc}")
+                        logger.exception("Failed to handle callback %s", callback_data)
+                        answer_callback_query(callback_id, "❌ Помилка обробки", show_alert=True)
 
         # --- 2) Періодична перевірка мережі + автопостинг ---
         now = time.time()
@@ -1091,7 +1094,7 @@ def main() -> int:
                     target_chat = CHAT_ID or last_command_chat_id
                     
                     if target_chat is None:
-                        print(
+                        logger.warning(
                             "Стан мережі змінився, але немає TELEGRAM_CHAT_ID "
                             "і ще жодного чату з командами – нікуди слати алерт."
                         )
@@ -1108,7 +1111,7 @@ def main() -> int:
                                         try:
                                             send_message(target_chat, tuya_action)
                                         except Exception as exc:  # noqa: BLE001
-                                            print(f"Failed to send tuya action: {exc}")
+                                            logger.exception("Failed to send tuya action")
                         else:
                             header = (
                                 "⚠️ Мережа зникла!\n"
@@ -1124,7 +1127,7 @@ def main() -> int:
                                         try:
                                             send_message(target_chat, tuya_action)
                                         except Exception as exc:  # noqa: BLE001
-                                            print(f"Failed to send tuya action: {exc}")
+                                            logger.exception("Failed to send tuya action")
 
                         # Потім відправити повний статус зі заголовком
                         status_text = build_status_text()
@@ -1133,7 +1136,7 @@ def main() -> int:
                         try:
                             send_message(target_chat, alert_text, buttons=get_status_buttons())
                         except Exception as exc:  # noqa: BLE001
-                            print(f"Failed to send grid alert: {exc}")
+                            logger.exception("Failed to send grid alert")
 
                     previous_state = grid_up
 
