@@ -82,6 +82,21 @@ Notes on Tuya:
 - Commands use `switch_1: True|False` for basic on/off smart plugs.
 - If a device is offline, the API returns an error; the bot reports and continues.
 
+## SQLite to MySQL migration
+1) Configure MySQL settings in `.env` (`MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`).
+2) Migrate data:
+```bash
+python migrate_sqlite_to_mysql.py
+```
+3) Check/add missing indexes (safe to run multiple times):
+```bash
+python migrate_add_indexes.py
+```
+4) Switch runtime to MySQL in `.env`:
+```dotenv
+DB_TYPE=mysql
+```
+
 ## Bot quick commands
 - `/status` – overall status (grid, key metrics) + Tuya device states (if configured) + today's electricity schedule
 - `/battery` – battery-only focus (SOC, voltage, current) with low-SOC tips

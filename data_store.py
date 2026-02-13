@@ -8,8 +8,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 import os
+from dotenv import load_dotenv
 
 from timezone_utils import now_eet
+
+ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH if ENV_PATH.exists() else None)
 
 # Database type detection from environment
 DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
@@ -29,6 +33,7 @@ CREATE TABLE IF NOT EXISTS readings (
     payload TEXT,
     error TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_created_at ON readings (created_at);
 """
 
 MYSQL_SCHEMA = """
@@ -37,9 +42,28 @@ CREATE TABLE IF NOT EXISTS readings (
     created_at VARCHAR(255) NOT NULL,
     payload LONGTEXT,
     error TEXT,
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_created_at_id (created_at, id)
 );
 """
+
+REQUIRED_MYSQL_INDEXES = {
+    "idx_created_at": "CREATE INDEX idx_created_at ON readings (created_at)",
+    "idx_created_at_id": "CREATE INDEX idx_created_at_id ON readings (created_at, id)",
+}
+
+
+def ensure_mysql_indexes(cursor) -> None:
+    """Ensure required indexes exist for the readings table."""
+    cursor.execute(
+        "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS "
+        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'readings'",
+        (MYSQL_DATABASE,),
+    )
+    existing_indexes = {row[0] for row in cursor.fetchall()}
+    for index_name, ddl in REQUIRED_MYSQL_INDEXES.items():
+        if index_name not in existing_indexes:
+            cursor.execute(ddl)
 
 
 def get_connection():
@@ -81,6 +105,7 @@ def init_db(db_path: str | Path | None = None) -> None:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(MYSQL_SCHEMA)
+        ensure_mysql_indexes(cursor)
         conn.commit()
         cursor.close()
         conn.close()
@@ -90,7 +115,7 @@ def init_db(db_path: str | Path | None = None) -> None:
         path = Path(path_str)
         path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(path)
-        conn.execute(SQLITE_SCHEMA)
+        conn.executescript(SQLITE_SCHEMA)
         conn.commit()
         conn.close()
 
@@ -225,13 +250,15 @@ def get_readings_since(db_path: str | Path | None = None, days: float = 1) -> li
     """
     if DB_TYPE == "mysql":
         try:
+            cutoff = now_eet() - datetime.timedelta(days=days)
+            cutoff_iso = cutoff.isoformat(timespec="seconds")
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT created_at, payload, error FROM readings "
-                "WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s DAY) "
-                "ORDER BY id DESC",
-                (days,),
+                "WHERE created_at >= %s "
+                "ORDER BY created_at DESC, id DESC",
+                (cutoff_iso,),
             )
             rows = cursor.fetchall()
             cursor.close()

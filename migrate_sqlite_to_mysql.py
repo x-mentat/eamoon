@@ -33,8 +33,8 @@ from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH if ENV_PATH.exists() else None)
 
 # SQLite configuration
 SQLITE_DB_PATH = os.getenv("DB_PATH", "inverter.db")
@@ -49,6 +49,10 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "eamoon")
 # Batch size for inserts
 BATCH_SIZE = 100
 RETRY_DELAY = 1  # seconds
+REQUIRED_MYSQL_INDEXES = {
+    "idx_created_at": "CREATE INDEX idx_created_at ON readings (created_at)",
+    "idx_created_at_id": "CREATE INDEX idx_created_at_id ON readings (created_at, id)",
+}
 
 
 def get_mysql_connection():
@@ -63,6 +67,22 @@ def get_mysql_connection():
         database=MYSQL_DATABASE,
         autocommit=False,
     )
+
+
+def ensure_mysql_indexes(cursor) -> list[str]:
+    """Ensure required indexes exist for readings table and return created indexes."""
+    cursor.execute(
+        "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS "
+        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'readings'",
+        (MYSQL_DATABASE,),
+    )
+    existing_indexes = {row[0] for row in cursor.fetchall()}
+    created_indexes = []
+    for index_name, ddl in REQUIRED_MYSQL_INDEXES.items():
+        if index_name not in existing_indexes:
+            cursor.execute(ddl)
+            created_indexes.append(index_name)
+    return created_indexes
 
 
 def setup_mysql() -> None:
@@ -94,14 +114,20 @@ def setup_mysql() -> None:
             created_at VARCHAR(255) NOT NULL,
             payload LONGTEXT,
             error TEXT,
-            INDEX idx_created_at (created_at)
+            INDEX idx_created_at (created_at),
+            INDEX idx_created_at_id (created_at, id)
         )
     """
     )
+    created_indexes = ensure_mysql_indexes(cursor)
     conn.commit()
     cursor.close()
     conn.close()
     print("  ✓ Table 'readings' ready")
+    if created_indexes:
+        print(f"  ✓ Added missing indexes: {', '.join(created_indexes)}")
+    else:
+        print("  ✓ Required indexes already exist")
 
 
 def get_sqlite_record_count() -> int:
