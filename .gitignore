@@ -3,3 +3,5 @@ __pycache__/
 .env
 inverter.db
 *.db
+.venv/
+venv/
