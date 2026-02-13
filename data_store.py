@@ -250,13 +250,15 @@ def get_readings_since(db_path: str | Path | None = None, days: float = 1) -> li
     """
     if DB_TYPE == "mysql":
         try:
+            cutoff = now_eet() - datetime.timedelta(days=days)
+            cutoff_iso = cutoff.isoformat(timespec="seconds")
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT created_at, payload, error FROM readings "
-                "WHERE created_at >= DATE_SUB(NOW(), INTERVAL %s DAY) "
-                "ORDER BY id DESC",
-                (days,),
+                "WHERE created_at >= %s "
+                "ORDER BY created_at DESC, id DESC",
+                (cutoff_iso,),
             )
             rows = cursor.fetchall()
             cursor.close()
