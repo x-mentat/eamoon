@@ -46,6 +46,10 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
     """Convert dataclass objects into template-friendly strings."""
     voltage_val = getattr(output, "voltage", None) or getattr(grid, "voltage", None)
     freq_val = getattr(output, "frequency", None)
+    output_power_val = getattr(output, "power", None)
+    if output_power_val == -1:
+        output_power_val = 0
+
     if freq_val is None:
         freq_val = getattr(grid, "frequency", None)
         # grid frequency in 4K is already scaled by 0.1
@@ -71,7 +75,7 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
         "grid_current": _format_value(raw_grid_current, digits=2),
         "ac_output_voltage": _format_value(voltage_val, digits=1),
         "ac_output_freq": _format_value(freq_val, divisor=freq_divisor, digits=2),
-        "ac_output_power": _format_value(getattr(output, "power", None), digits=0),
+        "ac_output_power": _format_value(output_power_val, digits=0),
         "ac_output_current": _format_value(getattr(output, "current", None), digits=1),
         "battery_voltage": _format_value(getattr(battery, "voltage", None), digits=1),
         "battery_current": _format_value(getattr(battery, "current", None), digits=1),
@@ -79,7 +83,7 @@ def _as_display(battery, pv, grid, output, status) -> Dict[str, str]:
         "battery_soc": _format_value(getattr(battery, "soc", None), digits=0),
         "battery_charge_power": _format_value(
             (getattr(grid, "power", None) or 0)
-            - (getattr(output, "power", None) or 0),
+            - (output_power_val or 0),
             digits=0,
         ),
         "pv_input_voltage": _format_value(getattr(pv, "pv1_voltage", None), digits=1),

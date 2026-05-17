@@ -428,6 +428,19 @@ def is_grid_up(payload: Dict[str, Any]) -> bool:
     return False
 
 
+def is_inverter_out_of_use(payload: Dict[str, Any]) -> bool:
+    """Detect inverter idle/out-of-use state to avoid false grid-loss alerts."""
+    ac_output_power = to_float(payload.get("ac_output_power"))
+    if ac_output_power is None:
+        return False
+
+    mode = str(payload.get("status_text") or "").strip().upper()
+    idle_modes = {"POWER_ON", "STANDBY", "POWER_SAVING"}
+
+    # Some models report load power as -1 W when inverter output is intentionally idle.
+    return ac_output_power <= -1 and mode in idle_modes
+
+
 def get_tuya_token() -> Optional[str]:
     """Get Tuya access token. Returns None if Tuya not available."""
     if not TUYA_AVAILABLE:
@@ -693,6 +706,14 @@ def build_status_text() -> str:
 
     if not payload:
         return "Дані ще не отримано."
+
+    if is_inverter_out_of_use(payload):
+        return (
+            "<b>⏸ Інвертор не в роботі</b> <code>(OUT OF USE)</code>\n\n"
+            "Зафіксовано службовий стан інвертора: <code>Load = -1 W</code>.\n"
+            "Це не аварія мережі, а вимкнений/неактивний вихід інвертора.\n"
+            f"<i>Останнє оновлення: {ts or 'невідомо'}</i>"
+        )
 
     # --- Якщо все важливе N/A -> вважаємо, що зв'язок втрачено ---
     if all_na(
@@ -1083,62 +1104,71 @@ def main() -> int:
         if now - last_grid_check >= POLL_INTERVAL:
             payload, error, ts = get_latest_reading()
             if payload and not error:
-                # тут, якщо все N/A, is_grid_up поверне False (бо to_float -> None)
-                grid_up = is_grid_up(payload)
+                if is_inverter_out_of_use(payload):
+                    logger.info(
+                        "Skipping grid alert logic: inverter out of use "
+                        "(status=%s, ac_output_power=%s)",
+                        payload.get("status_text"),
+                        payload.get("ac_output_power"),
+                    )
+                    previous_state = None
+                else:
+                    # тут, якщо все N/A, is_grid_up поверне False (бо to_float -> None)
+                    grid_up = is_grid_up(payload)
 
-                if previous_state is None:
-                    # перший запуск — просто запам'ятати стан
-                    previous_state = grid_up
-                elif grid_up != previous_state:
-                    # Стан мережі змінився -> формуємо алерт+повний статус
-                    target_chat = CHAT_ID or last_command_chat_id
-                    
-                    if target_chat is None:
-                        logger.warning(
-                            "Стан мережі змінився, але немає TELEGRAM_CHAT_ID "
-                            "і ще жодного чату з командами – нікуди слати алерт."
-                        )
-                    else:
-                        # Обробити Tuya дії ПЕРШИМИ і відправити їх
-                        if grid_up:
-                            header = "✅ Мережу відновлено"
-                            # Turn on Tuya devices if configured
-                            if TUYA_TURN_ON_ON_GRID_BACK and TUYA_AVAILABLE:
-                                tuya_token = get_tuya_token()
-                                if tuya_token:
-                                    tuya_action = turn_on_tuya_devices(tuya_token)
-                                    if tuya_action:
-                                        try:
-                                            send_message(target_chat, tuya_action)
-                                        except Exception as exc:  # noqa: BLE001
-                                            logger.exception("Failed to send tuya action")
-                        else:
-                            header = (
-                                "⚠️ Мережа зникла!\n"
-                                "‼️ Увага: будь ласка, не користуйтеся духовкою, "
-                                "пральною машиною, електрочайником та іншими потужними приладами."
+                    if previous_state is None:
+                        # перший запуск — просто запам'ятати стан
+                        previous_state = grid_up
+                    elif grid_up != previous_state:
+                        # Стан мережі змінився -> формуємо алерт+повний статус
+                        target_chat = CHAT_ID or last_command_chat_id
+                        
+                        if target_chat is None:
+                            logger.warning(
+                                "Стан мережі змінився, але немає TELEGRAM_CHAT_ID "
+                                "і ще жодного чату з командами – нікуди слати алерт."
                             )
-                            # Turn off Tuya devices if configured
-                            if TUYA_TURN_OFF_ON_POWER_LOSS and TUYA_AVAILABLE:
-                                tuya_token = get_tuya_token()
-                                if tuya_token:
-                                    tuya_action = turn_off_tuya_devices(tuya_token)
-                                    if tuya_action:
-                                        try:
-                                            send_message(target_chat, tuya_action)
-                                        except Exception as exc:  # noqa: BLE001
-                                            logger.exception("Failed to send tuya action")
+                        else:
+                            # Обробити Tuya дії ПЕРШИМИ і відправити їх
+                            if grid_up:
+                                header = "✅ Мережу відновлено"
+                                # Turn on Tuya devices if configured
+                                if TUYA_TURN_ON_ON_GRID_BACK and TUYA_AVAILABLE:
+                                    tuya_token = get_tuya_token()
+                                    if tuya_token:
+                                        tuya_action = turn_on_tuya_devices(tuya_token)
+                                        if tuya_action:
+                                            try:
+                                                send_message(target_chat, tuya_action)
+                                            except Exception as exc:  # noqa: BLE001
+                                                logger.exception("Failed to send tuya action")
+                            else:
+                                header = (
+                                    "⚠️ Мережа зникла!\n"
+                                    "‼️ Увага: будь ласка, не користуйтеся духовкою, "
+                                    "пральною машиною, електрочайником та іншими потужними приладами."
+                                )
+                                # Turn off Tuya devices if configured
+                                if TUYA_TURN_OFF_ON_POWER_LOSS and TUYA_AVAILABLE:
+                                    tuya_token = get_tuya_token()
+                                    if tuya_token:
+                                        tuya_action = turn_off_tuya_devices(tuya_token)
+                                        if tuya_action:
+                                            try:
+                                                send_message(target_chat, tuya_action)
+                                            except Exception as exc:  # noqa: BLE001
+                                                logger.exception("Failed to send tuya action")
 
-                        # Потім відправити повний статус зі заголовком
-                        status_text = build_status_text()
-                        alert_text = f"{header}\n\n{status_text}"
+                            # Потім відправити повний статус зі заголовком
+                            status_text = build_status_text()
+                            alert_text = f"{header}\n\n{status_text}"
 
-                        try:
-                            send_message(target_chat, alert_text, buttons=get_status_buttons())
-                        except Exception as exc:  # noqa: BLE001
-                            logger.exception("Failed to send grid alert")
+                            try:
+                                send_message(target_chat, alert_text, buttons=get_status_buttons())
+                            except Exception as exc:  # noqa: BLE001
+                                logger.exception("Failed to send grid alert")
 
-                    previous_state = grid_up
+                        previous_state = grid_up
 
             last_grid_check = now
 
