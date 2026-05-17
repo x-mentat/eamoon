@@ -417,9 +417,14 @@ def all_na(payload: Dict[str, Any], keys: List[str]) -> bool:
 
 
 def is_grid_up(payload: Dict[str, Any]) -> bool:
-    """Мережа вважається є, якщо є потужність або напруга > порогу."""
+    """Мережа вважається є, якщо є валідна мережева напруга або потужність > порогу."""
     grid_power = to_float(payload.get("grid_power"))
     grid_voltage = to_float(payload.get("grid_voltage"))
+
+    # Пріоритет напруги: при нормальних ~220-230V мережа точно присутня,
+    # навіть якщо споживання майже нульове або на межі порога потужності.
+    if grid_voltage is not None and grid_voltage > 170:
+        return True
 
     if grid_power is not None:
         return grid_power > 10
